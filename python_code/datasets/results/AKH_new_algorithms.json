@@ -1,0 +1,30 @@
+{
+  "RIME (2023)": {
+    "R2": NaN,
+    "R2CV": NaN,
+    "RMSE": NaN,
+    "MAE": NaN,
+    "Error": "cannot unpack non-iterable Agent object"
+  },
+  "INFO (2022)": {
+    "R2": NaN,
+    "R2CV": NaN,
+    "RMSE": NaN,
+    "MAE": NaN,
+    "Error": "cannot unpack non-iterable Agent object"
+  },
+  "RUN (2022)": {
+    "R2": NaN,
+    "R2CV": NaN,
+    "RMSE": NaN,
+    "MAE": NaN,
+    "Error": "cannot unpack non-iterable Agent object"
+  },
+  "GJO (2022)": {
+    "R2": NaN,
+    "R2CV": NaN,
+    "RMSE": NaN,
+    "MAE": NaN,
+    "Error": "cannot unpack non-iterable Agent object"
+  }
+}

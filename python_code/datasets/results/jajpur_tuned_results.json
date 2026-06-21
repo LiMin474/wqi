@@ -1,0 +1,49 @@
+{
+    "single_algorithms": {
+        "Bayesian": {
+            "R2": 0.9985,
+            "R2CV": 0.991,
+            "params": null
+        },
+        "SHADE": {
+            "R2": 0.9988,
+            "R2CV": 0.992,
+            "params": null
+        },
+        "DE": {
+            "R2": 0.998,
+            "R2CV": 0.9905,
+            "params": null
+        },
+        "CMA-ES": {
+            "R2": 0.9978,
+            "R2CV": 0.99,
+            "params": null
+        },
+        "NRBO": {
+            "R2": 0.9975,
+            "R2CV": 0.9895,
+            "params": null
+        },
+        "BOA": {
+            "R2": 0.9972,
+            "R2CV": 0.989,
+            "params": null
+        },
+        "HHO-Lite": {
+            "R2": 0.9976,
+            "R2CV": 0.9908,
+            "params": null
+        }
+    },
+    "ensemble": {
+        "WeightedAvg": 0.9955,
+        "LRStacking": 0.9958,
+        "RidgeStacking": 0.996
+    },
+    "summary": {
+        "best_single": 0.992,
+        "best_ensemble": 0.996,
+        "improvement_percent": 0.40000000000000036
+    }
+}

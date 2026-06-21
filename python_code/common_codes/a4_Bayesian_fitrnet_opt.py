@@ -1,0 +1,110 @@
+import numpy as np
+from skopt import gp_minimize
+from skopt.space import Integer, Categorical
+from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+import warnings
+warnings.filterwarnings('ignore')
+
+
+def SumSqr(params, XX, YY, cvss):
+    n_layers = int(params[0])
+    layer1 = int(params[1])
+    layer2 = int(params[2])
+    activation = params[3]
+
+    if n_layers == 1:
+        hidden_layer_sizes = (layer1,)
+    else:
+        hidden_layer_sizes = (layer1, layer2)
+
+    act_map = {'tanh': 'tanh', 'sigmoid': 'logistic', 'relu': 'relu'}
+
+    # Create pipeline with standardization (matching MATLAB's 'Standardize',1)
+    # Use 'lbfgs' solver matching MATLAB fitrnet's default for small datasets
+    Mdl = Pipeline([
+        ('scaler', StandardScaler()),
+        ('mlp', MLPRegressor(
+            hidden_layer_sizes=hidden_layer_sizes,
+            activation=act_map[activation],
+            solver='lbfgs',
+            max_iter=2000,
+            random_state=1,
+            early_stopping=True
+        ))
+    ])
+
+    Mdl.fit(XX, YY)
+
+    SST = np.sum((YY - np.mean(YY))**2)
+    y_pred = Mdl.predict(XX)
+    SSEmdl = np.sum((YY - y_pred)**2)
+
+    cv_scores = cross_val_score(Mdl, XX, YY, cv=cvss, scoring='neg_mean_squared_error')
+    SSEcv = -cv_scores.sum() * len(YY) / len(cv_scores)
+    R2CV = 1 - (SSEcv / SST)
+    R2 = 1 - (SSEmdl / SST)
+
+    output = {'R2': R2, 'R2CV': R2CV, 'Mdl': Mdl}
+    target = 1 - R2CV
+    return target, output
+
+
+def Optopt():
+    dimensions = [
+        Integer(1, 2, name='NumLayers'),
+        Integer(2, 10, name='Layer_1'),
+        Integer(2, 10, name='Layer_2'),
+        Categorical(['tanh', 'sigmoid', 'relu'], name='Activation')
+    ]
+    return dimensions
+
+
+def a4_Bayesian_fitrnet_opt(Pred, Resp):
+    numFolds = 5
+    np.random.seed(1)
+
+    kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
+    cvss = list(kf.split(Pred))
+
+    dimensions = Optopt()
+
+    def objective(params):
+        n_layers = int(params[0])
+        if n_layers == 1:
+            params_list = list(params)
+            params_list[2] = 0
+            params = tuple(params_list)
+        target, _ = SumSqr(params, Pred, Resp, cvss)
+        return target
+
+    res = gp_minimize(
+        objective,
+        dimensions,
+        acq_func='EI',
+        n_calls=60,
+        random_state=1,
+        verbose=True
+    )
+
+    # Track best-so-far convergence (func_vals = 1-R2CV, convert back to R2CV)
+    bayes_best_so_far = 1 - np.minimum.accumulate(res.func_vals)
+
+    print(f'  Best ANN trial found, now computing final model...')
+    best_params = res.x
+    target, output = SumSqr(best_params, Pred, Resp, cvss)
+
+    Mdl = output['Mdl']
+    A1 = {
+        'NumLayers': int(best_params[0]),
+        'Layer_1': int(best_params[1]),
+        'Layer_2': int(best_params[2]) if int(best_params[0]) > 1 else 0,
+        'Activation': best_params[3],
+        'R2': output['R2'],
+        'R2CV': output['R2CV'],
+        'Bayesian_convergence': bayes_best_so_far.tolist()
+    }
+
+    return Mdl, A1

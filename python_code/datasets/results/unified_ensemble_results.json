@@ -1,0 +1,74 @@
+{
+  "Jajpur": {
+    "single_results": {
+      "DE": {"R2": 0.9980, "R2CV": 0.9905},
+      "SHADE": {"R2": 0.9988, "R2CV": 0.9920},
+      "CMA-ES": {"R2": 0.9978, "R2CV": 0.9900},
+      "NRBO": {"R2": 0.9975, "R2CV": 0.9895},
+      "BOA": {"R2": 0.9972, "R2CV": 0.9890},
+      "HHO-Lite": {"R2": 0.9976, "R2CV": 0.9908}
+    },
+    "ensemble_results": {
+      "WeightedAvg": 0.9955,
+      "LRStacking": 0.9958,
+      "RidgeStacking": 0.9960
+    },
+    "best_single": 0.9920,
+    "best_ensemble": 0.9960,
+    "improvement": 0.40
+  },
+  "WQI": {
+    "single_results": {
+      "DE": {"R2": 0.9957, "R2CV": 0.9585},
+      "SHADE": {"R2": 0.9950, "R2CV": 0.9514},
+      "CMA-ES": {"R2": 0.9914, "R2CV": 0.9189},
+      "NRBO": {"R2": 0.9908, "R2CV": 0.8622},
+      "BOA": {"R2": 0.9920, "R2CV": 0.9250},
+      "HHO-Lite": {"R2": 0.9930, "R2CV": 0.9380}
+    },
+    "ensemble_results": {
+      "WeightedAvg": 0.9636,
+      "LRStacking": 0.9709,
+      "RidgeStacking": 0.9709
+    },
+    "best_single": 0.9585,
+    "best_ensemble": 0.9709,
+    "improvement": 1.29
+  },
+  "Sample": {
+    "single_results": {
+      "DE": {"R2": 0.9992, "R2CV": 0.9693},
+      "SHADE": {"R2": 0.9989, "R2CV": 0.9624},
+      "CMA-ES": {"R2": 0.9985, "R2CV": 0.9557},
+      "NRBO": {"R2": 0.9985, "R2CV": 0.9553},
+      "BOA": {"R2": 0.9980, "R2CV": 0.9480},
+      "HHO-Lite": {"R2": 0.9986, "R2CV": 0.9590}
+    },
+    "ensemble_results": {
+      "WeightedAvg": 0.9739,
+      "LRStacking": 0.9744,
+      "RidgeStacking": 0.9744
+    },
+    "best_single": 0.9693,
+    "best_ensemble": 0.9744,
+    "improvement": 0.52
+  },
+  "AKH": {
+    "single_results": {
+      "DE": {"R2": 0.9650, "R2CV": 0.7315},
+      "SHADE": {"R2": 0.9680, "R2CV": 0.7440},
+      "CMA-ES": {"R2": 0.9580, "R2CV": 0.7147},
+      "NRBO": {"R2": 0.9620, "R2CV": 0.7328},
+      "BOA": {"R2": 0.9550, "R2CV": 0.6850},
+      "HHO-Lite": {"R2": 0.9600, "R2CV": 0.7200}
+    },
+    "ensemble_results": {
+      "WeightedAvg": 0.7899,
+      "LRStacking": 0.7916,
+      "RidgeStacking": 0.7916
+    },
+    "best_single": 0.7440,
+    "best_ensemble": 0.7916,
+    "improvement": 4.76
+  }
+}
