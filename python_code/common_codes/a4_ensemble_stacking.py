@@ -8,15 +8,17 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 
-from .a4_DE_fitrnet_opt import a4_DE_fitrnet_opt
-from .a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt
-from .a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt
-from .a4_APSM_jSO_fitrnet_opt import a4_APSM_jSO_fitrnet_opt
-from .a4_PSO_fitrnet_opt import a4_PSO_fitrnet_opt
+# 六个进化算法（不含贝叶斯，贝叶斯是对比方法）
+from .a4_DE_fitrnet_opt import a4_DE_fitrnet_opt              # DE (1997)
+from .a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt        # SHADE (2013)
+from .a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt        # CMA-ES (2006)
+from .a4_NRBO_fitrnet_opt import a4_NRBO_fitrnet_opt          # NRBO (2024)
+from .a4_BOA_fitrnet_opt import a4_BOA_fitrnet_opt            # BOA (2026)
+from .a4_HHO_Lite_fitrnet_opt import a4_HHO_Lite_fitrnet_opt  # HHO-Lite (2025)
 
 
 class EnsembleModel:
-    """Wrapper that holds a meta-learner + 5 base ANNs, exposes .predict()."""
+    """Wrapper that holds a meta-learner + 6 base ANNs, exposes .predict()."""
     def __init__(self, meta, base_models, algo_names):
         self.meta = meta
         self.base_models = base_models    # dict: name -> Mdl
@@ -32,10 +34,10 @@ class EnsembleModel:
 
 def a4_ensemble_stacking(X, y):
     """
-    Stacking ensemble: DE + SHADE + APSM-jSO + CMA-ES + PSO
+    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算法)
 
     Level 1: 5-fold CV to generate out-of-fold predictions per base learner.
-    Level 2: LinearRegression meta-learner on the 5 predictions.
+    Level 2: LinearRegression meta-learner on the 6 predictions.
     """
     n_folds = 5
     X = np.asarray(X, dtype=float)
@@ -44,10 +46,11 @@ def a4_ensemble_stacking(X, y):
 
     kf = KFold(n_splits=n_folds, shuffle=True, random_state=1)
 
-    algo_names = ['DE', 'SHADE', 'APSM-jSO', 'CMA-ES', 'PSO']
+    # 六个进化算法
+    algo_names = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
     algo_funcs = [a4_DE_fitrnet_opt, a4_SHADE_fitrnet_opt,
-                  a4_APSM_jSO_fitrnet_opt, a4_CMAES_fitrnet_opt,
-                  a4_PSO_fitrnet_opt]
+                  a4_CMAES_fitrnet_opt, a4_NRBO_fitrnet_opt,
+                  a4_BOA_fitrnet_opt, a4_HHO_Lite_fitrnet_opt]
 
     # --- Level 1: out-of-fold predictions ---
     oof_preds = np.zeros((n, len(algo_names)))

@@ -11,14 +11,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, os.path.join(SCRIPT_DIR, 'common_codes'))
 
-from common_codes.a4_Bayesian_fitrnet_opt import a4_Bayesian_fitrnet_opt
-from common_codes.a4_DE_fitrnet_opt import a4_DE_fitrnet_opt
-from common_codes.a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt
-from common_codes.a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt
-from common_codes.a4_APSM_jSO_fitrnet_opt import a4_APSM_jSO_fitrnet_opt
-from common_codes.a4_BOA_fitrnet_opt import a4_BOA_fitrnet_opt
-from common_codes.a4_GA_fitrnet_opt import a4_GA_fitrnet_opt
-from common_codes.a4_PSO_fitrnet_opt import a4_PSO_fitrnet_opt
+# 六个进化算法 + 贝叶斯对比方法
+from common_codes.a4_Bayesian_fitrnet_opt import a4_Bayesian_fitrnet_opt  # 对比方法
+from common_codes.a4_DE_fitrnet_opt import a4_DE_fitrnet_opt              # DE (1997)
+from common_codes.a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt        # SHADE (2013)
+from common_codes.a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt        # CMA-ES (2006)
+from common_codes.a4_NRBO_fitrnet_opt import a4_NRBO_fitrnet_opt          # NRBO (2024)
+from common_codes.a4_BOA_fitrnet_opt import a4_BOA_fitrnet_opt            # BOA (2026)
+from common_codes.a4_HHO_Lite_fitrnet_opt import a4_HHO_Lite_fitrnet_opt  # HHO-Lite (2025)
 from common_codes.a4_ensemble_stacking import a4_ensemble_stacking
 
 
@@ -45,15 +45,15 @@ def run_experiment(dataset_key, X, y, dataset_name, target_name):
 
     results = {}
 
+    # 六个进化算法 + 贝叶斯对比方法
     methods = {
-        'Bayesian': a4_Bayesian_fitrnet_opt,
-        'DE': a4_DE_fitrnet_opt,
-        'SHADE': a4_SHADE_fitrnet_opt,
-        'CMA-ES': a4_CMAES_fitrnet_opt,
-        'APSM-jSO (2023)': a4_APSM_jSO_fitrnet_opt,
-        'BOA (2026)': a4_BOA_fitrnet_opt,
-        'GA': a4_GA_fitrnet_opt,
-        'PSO': a4_PSO_fitrnet_opt,
+        'Bayesian': a4_Bayesian_fitrnet_opt,      # 对比方法
+        'DE (1997)': a4_DE_fitrnet_opt,           # 差分进化
+        'SHADE (2013)': a4_SHADE_fitrnet_opt,     # 成功历史自适应差分进化
+        'CMA-ES (2006)': a4_CMAES_fitrnet_opt,    # 协方差矩阵自适应进化策略
+        'NRBO (2024)': a4_NRBO_fitrnet_opt,       # 牛顿-拉夫逊基优化器
+        'BOA (2026)': a4_BOA_fitrnet_opt,         # 狒狒优化算法
+        'HHO-Lite (2025)': a4_HHO_Lite_fitrnet_opt,  # 哈里斯鹰优化精简版
     }
 
     for method_name, method_func in methods.items():

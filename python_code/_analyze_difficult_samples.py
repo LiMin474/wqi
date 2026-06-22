@@ -9,9 +9,10 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.neural_network import MLPRegressor
 from common_codes.a4_DE_fitrnet_opt import a4_DE_fitrnet_opt
 from common_codes.a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt
-from common_codes.a4_APSM_jSO_fitrnet_opt import a4_APSM_jSO_fitrnet_opt
 from common_codes.a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt
 from common_codes.a4_NRBO_fitrnet_opt import a4_NRBO_fitrnet_opt
+from common_codes.a4_BOA_fitrnet_opt import a4_BOA_fitrnet_opt
+from common_codes.a4_HHO_Lite_fitrnet_opt import a4_HHO_Lite_fitrnet_opt
 
 def analyze_difficult_samples(ds_name, ds_path, methods):
     """分析困难样本"""
@@ -100,12 +101,14 @@ def main():
         'WQI': 'datasets/2_wqi_dataset.npz'
     }
 
+    # 六个进化算法
     methods = {
         'DE': a4_DE_fitrnet_opt,
         'SHADE': a4_SHADE_fitrnet_opt,
-        'APSM-jSO': a4_APSM_jSO_fitrnet_opt,
         'CMA-ES': a4_CMAES_fitrnet_opt,
-        'NRBO': a4_NRBO_fitrnet_opt
+        'NRBO': a4_NRBO_fitrnet_opt,
+        'BOA': a4_BOA_fitrnet_opt,
+        'HHO-Lite': a4_HHO_Lite_fitrnet_opt
     }
 
     results = {}

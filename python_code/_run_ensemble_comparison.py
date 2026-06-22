@@ -1,14 +1,13 @@
 """
-5种集成方法系统对比实验
+6种进化算法集成对比实验
 ===================================
-对每个数据集，对比5种集成策略：
+对每个数据集，对比4种集成策略：
   1. SimpleAvg      - 简单平均
   2. WeightedR2CV   - 按R2CV分配权重
-  3. WeightedR2CV2   - 按R2CV平方分配权重（放大差异）
-  4. LRStacking     - LinearRegression元学习器（已有）
-  5. AdaBoost       - AdaBoostRegressor
+  3. LRStacking     - LinearRegression元学习器
+  4. RidgeStacking  - Ridge回归元学习器
 
-基学习器：DE, SHADE, APSM-jSO, CMA-ES, PSO（5个，全部跑5折CV生成out-of-fold预测）
+基学习器：DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite（6个进化算法）
 
 使用快速模式：从已有JSON读取超参数，重建ANN，避免重新优化。
 """
@@ -32,18 +31,20 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, os.path.join(SCRIPT_DIR, 'common_codes'))
 
-# 导入各优化算法（用于重新训练以生成out-of-fold预测）
+# 导入六个进化算法
 from common_codes.a4_DE_fitrnet_opt import a4_DE_fitrnet_opt
 from common_codes.a4_SHADE_fitrnet_opt import a4_SHADE_fitrnet_opt
 from common_codes.a4_CMAES_fitrnet_opt import a4_CMAES_fitrnet_opt
-from common_codes.a4_APSM_jSO_fitrnet_opt import a4_APSM_jSO_fitrnet_opt
-from common_codes.a4_PSO_fitrnet_opt import a4_PSO_fitrnet_opt
+from common_codes.a4_NRBO_fitrnet_opt import a4_NRBO_fitrnet_opt
+from common_codes.a4_BOA_fitrnet_opt import a4_BOA_fitrnet_opt
+from common_codes.a4_HHO_Lite_fitrnet_opt import a4_HHO_Lite_fitrnet_opt
 
 
-ALGO_NAMES = ['DE', 'SHADE', 'APSM-jSO', 'CMA-ES', 'PSO']
+# 六个进化算法
+ALGO_NAMES = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
 ALGO_FUNCS = [a4_DE_fitrnet_opt, a4_SHADE_fitrnet_opt,
-              a4_APSM_jSO_fitrnet_opt, a4_CMAES_fitrnet_opt,
-              a4_PSO_fitrnet_opt]
+              a4_CMAES_fitrnet_opt, a4_NRBO_fitrnet_opt,
+              a4_BOA_fitrnet_opt, a4_HHO_Lite_fitrnet_opt]
 
 N_FOLDS = 5
 RANDOM_STATE = 1

@@ -1,0 +1,102 @@
+# 基于多进化算法集成的 ANN 超参数优化用于水质预测
+
+> 项目核心：六种进化算法（DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite）+ 贝叶斯优化 + Stacking集成
+
+---
+
+## 📁 项目目录结构
+
+```
+├── Bootstrap_new/          # 原论文MATLAB Bootstrap代码（保留）
+├── Map Codes/              # 原论文MATLAB地图绘制代码（保留）
+├── common_codes/           # 原论文MATLAB公共代码（保留）
+├── datasets/               # 数据集目录
+│   ├── 1_jajpur（原论文）.npz    # Jajpur地下水数据集
+│   ├── 2_wqi_dataset.npz         # WQI河流水质数据集
+│   ├── 3_sample_dataset.npz      # Sample加拿大数据集
+│   ├── 4_akh_wqi.npz             # AKH高变异数据集
+│   └── 数据说明.md               # 数据集说明文档
+├── python_code/            # Python核心代码目录
+│   ├── common_codes/       # 算法核心模块
+│   │   ├── a4_DE_fitrnet_opt.py       # DE算法
+│   │   ├── a4_SHADE_fitrnet_opt.py    # SHADE算法
+│   │   ├── a4_CMAES_fitrnet_opt.py    # CMA-ES算法
+│   │   ├── a4_NRBO_fitrnet_opt.py     # NRBO算法
+│   │   ├── a4_BOA_fitrnet_opt.py      # BOA算法
+│   │   ├── a4_HHO_Lite_fitrnet_opt.py # HHO-Lite算法
+│   │   ├── a4_Bayesian_fitrnet_opt.py # 贝叶斯优化（对比方法）
+│   │   └── a4_ensemble_stacking.py    # Stacking集成
+│   ├── datasets/           # 运行结果目录
+│   │   └── results/        # 实验结果文件
+│   ├── _run_multi_dataset.py          # 多数据集运行脚本
+│   ├── _run_unified_ensemble.py       # 统一集成实验
+│   └── _run_ensemble_comparison.py    # 集成方法对比
+├── AI论文初稿.md            # 论文初稿
+├── agent.md                # 项目核心文档
+└── README                  # 本文件
+```
+
+---
+
+## 🧬 六种进化算法位置
+
+| 算法 | 中文名称 | 年份 | 所在文件 |
+|:----|:--------|:----:|:--------|
+| **DE** | 差分进化算法 | 1997 | `python_code/common_codes/a4_DE_fitrnet_opt.py` |
+| **SHADE** | 成功历史自适应差分进化 | 2013 | `python_code/common_codes/a4_SHADE_fitrnet_opt.py` |
+| **CMA-ES** | 协方差矩阵自适应进化策略 | 2006 | `python_code/common_codes/a4_CMAES_fitrnet_opt.py` |
+| **NRBO** | 牛顿-拉夫逊基优化器 | 2024 | `python_code/common_codes/a4_NRBO_fitrnet_opt.py` |
+| **BOA** | 狒狒优化算法 | 2026 | `python_code/common_codes/a4_BOA_fitrnet_opt.py` |
+| **HHO-Lite** | 哈里斯鹰优化精简版 | 2025 | `python_code/common_codes/a4_HHO_Lite_fitrnet_opt.py` |
+
+---
+
+## 🎯 集成代码位置
+
+| 集成方法 | 所在文件 | 说明 |
+|:--------|:--------|:----|
+| **Stacking** | `python_code/common_codes/a4_ensemble_stacking.py` | 6个进化算法集成 |
+| **WeightedAvg** | `python_code/_run_unified_ensemble.py` | 按R²CV加权平均 |
+| **LRStacking** | `python_code/_run_unified_ensemble.py` | 线性回归元学习器 |
+| **RidgeStacking** | `python_code/_run_unified_ensemble.py` | 岭回归元学习器 |
+
+---
+
+## 📊 数据集位置
+
+| 数据集 | 文件 | 样本数 | 特征数 |
+|:------|:----|:------:|:------:|
+| Jajpur | `datasets/1_jajpur（原论文）.npz` | 74 | 12 |
+| WQI | `datasets/2_wqi_dataset.npz` | 501 | 8 |
+| Sample | `datasets/3_sample_dataset.npz` | 1064 | 11 |
+| AKH | `datasets/4_akh_wqi.npz` | 657 | 10 |
+
+---
+
+## 🚀 主要运行脚本
+
+| 脚本 | 功能 |
+|:----|:----|
+| `_run_multi_dataset.py` | 4数据集×7算法完整测试 |
+| `_run_unified_ensemble.py` | 统一集成实验（核心） |
+| `_run_ensemble_comparison.py` | 集成方法对比实验 |
+| `_analyze_divergence.py` | 算法分歧度分析 |
+| `_analyze_difficult_samples.py` | 困难样本分析 |
+| `_statistical_tests.py` | 统计显著性检验 |
+
+---
+
+## 📖 核心文档
+
+- **agent.md** - 项目核心文档（含算法说明、实验结果、协作指南）
+- **AI论文初稿.md** - 论文初稿
+
+---
+
+## 📝 运行方式
+
+```bash
+cd python_code
+python _run_multi_dataset.py      # 运行多数据集测试
+python _run_unified_ensemble.py   # 运行集成实验
+```
