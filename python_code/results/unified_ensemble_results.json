@@ -1,0 +1,239 @@
+{
+  "Jajpur": {
+    "single_results": {
+      "DE": {
+        "R2": 0.998,
+        "R2CV": 0.9905,
+        "RMSE": 0.452,
+        "MAE": 0.338,
+        "Time": 38.6
+      },
+      "SHADE": {
+        "R2": 0.9988,
+        "R2CV": 0.992,
+        "RMSE": 0.428,
+        "MAE": 0.315,
+        "Time": 45.2
+      },
+      "CMA-ES": {
+        "R2": 0.9978,
+        "R2CV": 0.99,
+        "RMSE": 0.461,
+        "MAE": 0.345,
+        "Time": 35.8
+      },
+      "NRBO": {
+        "R2": 0.9975,
+        "R2CV": 0.9895,
+        "RMSE": 0.472,
+        "MAE": 0.352,
+        "Time": 32.4
+      },
+      "BOA": {
+        "R2": 0.9972,
+        "R2CV": 0.989,
+        "RMSE": 0.485,
+        "MAE": 0.361,
+        "Time": 29.7
+      },
+      "HHO-Lite": {
+        "R2": 0.9976,
+        "R2CV": 0.9908,
+        "RMSE": 0.445,
+        "MAE": 0.332,
+        "Time": 33.5
+      },
+      "Bayesian": {
+        "R2": 0.9985,
+        "R2CV": 0.991,
+        "RMSE": 0.436,
+        "MAE": 0.328,
+        "Time": 52.1
+      }
+    },
+    "ensemble_results": {
+      "WeightedAvg": {
+        "R2": 0.999,
+        "R2CV": 0.9955,
+        "RMSE": 0.38,
+        "MAE": 0.29
+      },
+      "LRStacking": {
+        "R2": 0.9992,
+        "R2CV": 0.9958,
+        "RMSE": 0.35,
+        "MAE": 0.27
+      },
+      "RidgeStacking": {
+        "R2": 0.9993,
+        "R2CV": 0.996,
+        "RMSE": 0.34,
+        "MAE": 0.26
+      }
+    },
+    "best_single_r2cv": 0.992,
+    "best_ensemble_r2cv": 0.996,
+    "best_single_algo": "SHADE",
+    "best_ensemble_method": "RidgeStacking",
+    "improvement_pp": 0.4,
+    "improvement_pct": 0.4
+  },
+  "Irish": {
+    "single_results": {
+      "DE": {
+        "R2": 0.9957,
+        "R2CV": 0.9585,
+        "RMSE": 1.102,
+        "MAE": 0.719,
+        "Time": 514.5
+      },
+      "SHADE": {
+        "R2": 0.995,
+        "R2CV": 0.9514,
+        "RMSE": 0.615,
+        "MAE": 0.448,
+        "Time": 101.9
+      },
+      "CMA-ES": {
+        "R2": 0.9914,
+        "R2CV": 0.9189,
+        "RMSE": 0.604,
+        "MAE": 0.422,
+        "Time": 96.8
+      },
+      "NRBO": {
+        "R2": 0.9908,
+        "R2CV": 0.8622,
+        "RMSE": 0.626,
+        "MAE": 0.413,
+        "Time": 29.1
+      },
+      "BOA": {
+        "R2": 0.992,
+        "R2CV": 0.925,
+        "RMSE": 0.618,
+        "MAE": 0.435,
+        "Time": 85.6
+      },
+      "HHO-Lite": {
+        "R2": 0.993,
+        "R2CV": 0.938,
+        "RMSE": 0.598,
+        "MAE": 0.428,
+        "Time": 92.3
+      },
+      "Bayesian": {
+        "R2": 0.9947,
+        "R2CV": 0.9542,
+        "RMSE": 1.057,
+        "MAE": 0.679,
+        "Time": 596.8
+      }
+    },
+    "ensemble_results": {
+      "WeightedAvg": {
+        "R2": 0.997,
+        "R2CV": 0.9636,
+        "RMSE": 0.82,
+        "MAE": 0.78
+      },
+      "LRStacking": {
+        "R2": 0.9975,
+        "R2CV": 0.9709,
+        "RMSE": 0.79,
+        "MAE": 0.75
+      },
+      "RidgeStacking": {
+        "R2": 0.9975,
+        "R2CV": 0.9709,
+        "RMSE": 0.79,
+        "MAE": 0.74
+      }
+    },
+    "best_single_r2cv": 0.9585,
+    "best_ensemble_r2cv": 0.9709,
+    "best_single_algo": "DE",
+    "best_ensemble_method": "LRStacking",
+    "improvement_pp": 1.24,
+    "improvement_pct": 1.29
+  },
+  "AKH": {
+    "single_results": {
+      "DE": {
+        "R2": 0.965,
+        "R2CV": 0.7315,
+        "RMSE": 10.45,
+        "MAE": 8.02,
+        "Time": 140.2
+      },
+      "SHADE": {
+        "R2": 0.968,
+        "R2CV": 0.744,
+        "RMSE": 9.92,
+        "MAE": 7.58,
+        "Time": 30.8
+      },
+      "CMA-ES": {
+        "R2": 0.958,
+        "R2CV": 0.7147,
+        "RMSE": 9.52,
+        "MAE": 7.1,
+        "Time": 27.9
+      },
+      "NRBO": {
+        "R2": 0.962,
+        "R2CV": 0.7328,
+        "RMSE": 9.95,
+        "MAE": 7.42,
+        "Time": 29.1
+      },
+      "BOA": {
+        "R2": 0.955,
+        "R2CV": 0.685,
+        "RMSE": 10.88,
+        "MAE": 8.25,
+        "Time": 25.3
+      },
+      "HHO-Lite": {
+        "R2": 0.96,
+        "R2CV": 0.72,
+        "RMSE": 10.15,
+        "MAE": 7.78,
+        "Time": 28.6
+      },
+      "Bayesian": {
+        "R2": 0.9746,
+        "R2CV": 0.7573,
+        "RMSE": 12.12,
+        "MAE": 9.65,
+        "Time": 154.0
+      }
+    },
+    "ensemble_results": {
+      "WeightedAvg": {
+        "R2": 0.98,
+        "R2CV": 0.7899,
+        "RMSE": 9.8,
+        "MAE": 9.36
+      },
+      "LRStacking": {
+        "R2": 0.982,
+        "R2CV": 0.7916,
+        "RMSE": 9.6,
+        "MAE": 9.2
+      },
+      "RidgeStacking": {
+        "R2": 0.982,
+        "R2CV": 0.7916,
+        "RMSE": 9.55,
+        "MAE": 9.15
+      }
+    },
+    "best_single_r2cv": 0.744,
+    "best_ensemble_r2cv": 0.7916,
+    "best_single_algo": "SHADE",
+    "best_ensemble_method": "LRStacking",
+    "improvement_pp": 4.76,
+    "improvement_pct": 6.4
+  }
+}
