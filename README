@@ -1,102 +1,104 @@
 # 基于多进化算法集成的 ANN 超参数优化用于水质预测
 
-> 项目核心：六种进化算法（DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite）+ 贝叶斯优化 + Stacking集成
+六种进化算法（DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite）+ 贝叶斯优化 + WeightedAvg/Stacking 集成
 
 ---
 
-## 📁 项目目录结构
+## 项目目录结构
 
 ```
-├── Bootstrap_new/          # 原论文MATLAB Bootstrap代码（保留）
-├── Map Codes/              # 原论文MATLAB地图绘制代码（保留）
-├── common_codes/           # 原论文MATLAB公共代码（保留）
-├── datasets/               # 数据集目录
-│   ├── 1_jajpur（原论文）.npz    # Jajpur地下水数据集
-│   ├── 2_wqi_dataset.npz         # WQI河流水质数据集
-│   ├── 3_sample_dataset.npz      # Sample加拿大数据集
-│   ├── 4_akh_wqi.npz             # AKH高变异数据集
-│   └── 数据说明.md               # 数据集说明文档
-├── python_code/            # Python核心代码目录
-│   ├── common_codes/       # 算法核心模块
-│   │   ├── a4_DE_fitrnet_opt.py       # DE算法
-│   │   ├── a4_SHADE_fitrnet_opt.py    # SHADE算法
-│   │   ├── a4_CMAES_fitrnet_opt.py    # CMA-ES算法
-│   │   ├── a4_NRBO_fitrnet_opt.py     # NRBO算法
-│   │   ├── a4_BOA_fitrnet_opt.py      # BOA算法
-│   │   ├── a4_HHO_Lite_fitrnet_opt.py # HHO-Lite算法
-│   │   ├── a4_Bayesian_fitrnet_opt.py # 贝叶斯优化（对比方法）
-│   │   └── a4_ensemble_stacking.py    # Stacking集成
-│   ├── datasets/           # 运行结果目录
-│   │   └── results/        # 实验结果文件
-│   ├── _run_multi_dataset.py          # 多数据集运行脚本
-│   ├── _run_unified_ensemble.py       # 统一集成实验
-│   └── _run_ensemble_comparison.py    # 集成方法对比
-├── AI论文初稿.md            # 论文初稿
-├── agent.md                # 项目核心文档
-└── README                  # 本文件
+python_code/
+├── analysis/                    # 分析工具
+│   ├── _analyze_divergence.py      # 算法分歧度分析
+│   ├── _analyze_difficult_samples.py # 困难样本分析
+│   └── _statistical_tests.py       # 统计显著性检验
+├── common_codes/                # 算法核心模块
+│   ├── benchmarks/
+│   │   └── Bayesian.py             # 贝叶斯优化（对比方法）
+│   ├── ensemble/
+│   │   └── stacking.py             # Stacking集成
+│   └── optimizers/
+│       ├── DE.py                   # 差分进化算法 (1997)
+│       ├── SHADE.py                # 成功历史自适应DE (2013)
+│       ├── CMAES.py                # 协方差矩阵自适应ES (2006)
+│       ├── NRBO.py                 # 牛顿-拉夫逊基优化器 (2024)
+│       ├── BOA.py                  # 狒狒优化算法 (2026)
+│       └── HHO_Lite.py             # 哈里斯鹰优化精简版 (2025)
+├── datasets/                    # 数据集
+│   ├── 1_jajpur.npz                # Jajpur地下水 (74样本, 12特征)
+│   ├── 2_irish_river.npz           # Irish河流 (501样本, 11特征)
+│   └── 3_akh_wqi.npz               # AKH水质 (657样本, 10特征)
+├── experiments/                  # 实验与画图脚本
+│   ├── _run_unified_ensemble.py    # 统一集成实验（核心）
+│   └── _generate_paper_figures.py  # 论文8张图生成
+├── results/                      # 实验结果
+│   ├── unified_ensemble_results.json # 6算法×3数据集+集成完整结果
+│   ├── divergence_analysis.json     # 分歧度分析
+│   ├── statistical_tests.json       # 统计检验
+│   ├── correlation_matrix_*.csv     # 3个数据集的相关系数矩阵
+│   ├── scatter_Jajpur.csv           # Jajpur预测散点数据
+│   └── figures/                     # 8张论文图(PNG+PDF)
+├── 数据集整理.md                 # 数据集说明文档
+└── __init__.py
+AI论文初稿.md                    # 论文初稿
+agent.md                         # 项目核心文档
+README                           # 本文件
 ```
 
 ---
 
-## 🧬 六种进化算法位置
+## 六种进化算法
 
-| 算法 | 中文名称 | 年份 | 所在文件 |
-|:----|:--------|:----:|:--------|
-| **DE** | 差分进化算法 | 1997 | `python_code/common_codes/a4_DE_fitrnet_opt.py` |
-| **SHADE** | 成功历史自适应差分进化 | 2013 | `python_code/common_codes/a4_SHADE_fitrnet_opt.py` |
-| **CMA-ES** | 协方差矩阵自适应进化策略 | 2006 | `python_code/common_codes/a4_CMAES_fitrnet_opt.py` |
-| **NRBO** | 牛顿-拉夫逊基优化器 | 2024 | `python_code/common_codes/a4_NRBO_fitrnet_opt.py` |
-| **BOA** | 狒狒优化算法 | 2026 | `python_code/common_codes/a4_BOA_fitrnet_opt.py` |
-| **HHO-Lite** | 哈里斯鹰优化精简版 | 2025 | `python_code/common_codes/a4_HHO_Lite_fitrnet_opt.py` |
-
----
-
-## 🎯 集成代码位置
-
-| 集成方法 | 所在文件 | 说明 |
-|:--------|:--------|:----|
-| **Stacking** | `python_code/common_codes/a4_ensemble_stacking.py` | 6个进化算法集成 |
-| **WeightedAvg** | `python_code/_run_unified_ensemble.py` | 按R²CV加权平均 |
-| **LRStacking** | `python_code/_run_unified_ensemble.py` | 线性回归元学习器 |
-| **RidgeStacking** | `python_code/_run_unified_ensemble.py` | 岭回归元学习器 |
+| 算法 | 中文名称 | 年份 | 文件 |
+|:----|:--------|:----:|:----|
+| DE | 差分进化算法 | 1997 | `common_codes/optimizers/DE.py` |
+| SHADE | 成功历史自适应差分进化 | 2013 | `common_codes/optimizers/SHADE.py` |
+| CMA-ES | 协方差矩阵自适应进化策略 | 2006 | `common_codes/optimizers/CMAES.py` |
+| NRBO | 牛顿-拉夫逊基优化器 | 2024 | `common_codes/optimizers/NRBO.py` |
+| BOA | 狒狒优化算法 | 2026 | `common_codes/optimizers/BOA.py` |
+| HHO-Lite | 哈里斯鹰优化精简版 | 2025 | `common_codes/optimizers/HHO_Lite.py` |
 
 ---
 
-## 📊 数据集位置
+## 三个数据集
 
-| 数据集 | 文件 | 样本数 | 特征数 |
-|:------|:----|:------:|:------:|
-| Jajpur | `datasets/1_jajpur（原论文）.npz` | 74 | 12 |
-| WQI | `datasets/2_wqi_dataset.npz` | 501 | 8 |
-| Sample | `datasets/3_sample_dataset.npz` | 1064 | 11 |
-| AKH | `datasets/4_akh_wqi.npz` | 657 | 10 |
-
----
-
-## 🚀 主要运行脚本
-
-| 脚本 | 功能 |
-|:----|:----|
-| `_run_multi_dataset.py` | 4数据集×7算法完整测试 |
-| `_run_unified_ensemble.py` | 统一集成实验（核心） |
-| `_run_ensemble_comparison.py` | 集成方法对比实验 |
-| `_analyze_divergence.py` | 算法分歧度分析 |
-| `_analyze_difficult_samples.py` | 困难样本分析 |
-| `_statistical_tests.py` | 统计显著性检验 |
+| 数据集 | 来源 | 样本数 | 特征数 | WQI范围 | WQI标准差 |
+|:------|:----|:------:|:------:|:--------|:--------:|
+| Jajpur-Groundwater | 印度地下水 | 74 | 12 | 22.38~85.02 | 13.23 |
+| Irish-River-CCME | 爱尔兰EPA河流 | 501 | 11 | 53.48~100.00 | 6.79 |
+| AKH-WQI | 公开地表水 | 657 | 10 | 0.02~97.32 | **25.78** |
 
 ---
 
-## 📖 核心文档
+## 核心结果（R²CV）
 
-- **agent.md** - 项目核心文档（含算法说明、实验结果、协作指南）
-- **AI论文初稿.md** - 论文初稿
+| 数据集 | 单算法最佳 | 最佳集成 | **增益** |
+|:------|:---------:|:--------:|:--------:|
+| Jajpur-Groundwater | 0.9920 (SHADE) | **0.9960** | **+0.40%** |
+| Irish-River-CCME | 0.9585 (DE) | 0.9709 | +1.29% |
+| AKH-WQI | 0.7440 (SHADE) | **0.7916** | **+6.40%** |
 
 ---
 
-## 📝 运行方式
+## 运行方式
 
 ```bash
 cd python_code
-python _run_multi_dataset.py      # 运行多数据集测试
-python _run_unified_ensemble.py   # 运行集成实验
+# 设置PYTHONPATH
+$env:PYTHONPATH="."
+# 跑集成实验
+python experiments/_run_unified_ensemble.py
+# 分歧度分析
+python analysis/_analyze_divergence.py
+# 统计检验（需先跑分歧度分析）
+python analysis/_statistical_tests.py
+# 生成论文图
+python experiments/_generate_paper_figures.py
 ```
+
+---
+
+## 核心文档
+
+- **agent.md** - 项目核心文档（算法说明、实验结果、图例清单）
+- **AI论文初稿.md** - 论文初稿
