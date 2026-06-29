@@ -37,7 +37,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_HHO_Lite(params, XX, YY, cvss, max_iter=2000):
+def SumSqr_HHO_Lite(params, XX, YY, cvss, max_iter=300):
     """Evaluate ANN model and return fitness."""
     n_layers, layer1, layer2, activation, alpha = params
 
@@ -88,7 +88,7 @@ def levy_flight(dim, beta=1.5):
     return step
 
 
-def a4_HHO_Lite_fitrnet_opt(Pred, Resp):
+def a4_HHO_Lite_fitrnet_opt(Pred, Resp, max_evals=60):
     """
     HHO-Lite (Harris Hawks Optimization Lite) for ANN hyperparameter tuning.
     
@@ -114,7 +114,6 @@ def a4_HHO_Lite_fitrnet_opt(Pred, Resp):
 
     # --- HHO-Lite parameters ---
     popsize = 15                       # population size
-    max_evals = 60                     # max evaluations
     energy_init = 1.0                  # initial energy
     energy_decay = 0.98                # energy decay rate per generation
     jump_factor = 1.5                  # jump strength for Levy flight
@@ -226,7 +225,7 @@ def a4_HHO_Lite_fitrnet_opt(Pred, Resp):
     best_idx = np.argmin(fitness)
     best_x = pop[best_idx]
     best_params = decode_params(best_x)
-    target, output = SumSqr_HHO_Lite(best_params, Pred, Resp, cvss, max_iter=2000)
+    target, output = SumSqr_HHO_Lite(best_params, Pred, Resp, cvss, max_iter=300)
 
     Mdl = output['Mdl']
     A1 = {

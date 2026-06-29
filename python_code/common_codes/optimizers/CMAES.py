@@ -20,7 +20,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_CMAES(params, XX, YY, cvss, max_iter=2000):
+def SumSqr_CMAES(params, XX, YY, cvss, max_iter=300):
     n_layers, layer1, layer2, activation, alpha = params
 
     if n_layers == 1:
@@ -60,9 +60,9 @@ def SumSqr_CMAES(params, XX, YY, cvss, max_iter=2000):
     return target, output
 
 
-def a4_CMAES_fitrnet_opt(Pred, Resp):
+def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50):
     numFolds = 5
-    np.random.seed(1)
+    np.random.seed(7)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
     cvss = list(kf.split(Pred))
@@ -72,7 +72,7 @@ def a4_CMAES_fitrnet_opt(Pred, Resp):
     sigma0 = 0.3
 
     popsize = 10
-    n_generations = 4
+    n_generations = max(0, max_evals // popsize - 1)
 
     total_evals = (n_generations + 1) * popsize
 
@@ -81,7 +81,7 @@ def a4_CMAES_fitrnet_opt(Pred, Resp):
 
     opts = {
         'popsize': popsize,
-        'seed': 1,
+        'seed': 7,
         'CMA_diagonal': False,
         'bounds': [0.0, 1.0],
         'verbose': -9,
@@ -120,7 +120,7 @@ def a4_CMAES_fitrnet_opt(Pred, Resp):
     best_x = es.result.xbest
     best_x = np.clip(best_x, 0.0, 1.0)
     best_params = decode_params(best_x)
-    target, output = SumSqr_CMAES(best_params, Pred, Resp, cvss, max_iter=2000)
+    target, output = SumSqr_CMAES(best_params, Pred, Resp, cvss, max_iter=300)
 
     Mdl = output['Mdl']
     A1 = {

@@ -35,7 +35,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_NRBO(params, XX, YY, cvss, max_iter=2000):
+def SumSqr_NRBO(params, XX, YY, cvss, max_iter=300):
     """Evaluate ANN model and return fitness."""
     n_layers, layer1, layer2, activation, alpha = params
 
@@ -76,7 +76,7 @@ def SumSqr_NRBO(params, XX, YY, cvss, max_iter=2000):
     return target, output
 
 
-def a4_NRBO_fitrnet_opt(Pred, Resp):
+def a4_NRBO_fitrnet_opt(Pred, Resp, max_evals=60):
     """
     Newton-Raphson-based Optimizer (NRBO) for ANN hyperparameter tuning.
     
@@ -99,7 +99,6 @@ def a4_NRBO_fitrnet_opt(Pred, Resp):
 
     # --- NRBO parameters ---
     popsize = 10                       # population size
-    max_evals = 60                     # max evaluations
     deciding_factor = 0.6              # TAO control parameter
     
     # Newton-Raphson parameters
@@ -215,7 +214,7 @@ def a4_NRBO_fitrnet_opt(Pred, Resp):
     best_idx = np.argmin(fitness)
     best_x = pop[best_idx]
     best_params = decode_params(best_x)
-    target, output = SumSqr_NRBO(best_params, Pred, Resp, cvss, max_iter=2000)
+    target, output = SumSqr_NRBO(best_params, Pred, Resp, cvss, max_iter=300)
 
     Mdl = output['Mdl']
     A1 = {

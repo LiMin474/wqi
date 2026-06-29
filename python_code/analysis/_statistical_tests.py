@@ -7,9 +7,12 @@ import json, os
 from scipy.stats import wilcoxon, friedmanchisquare
 
 def main():
-    out_dir = 'results'
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_DIR = os.path.dirname(SCRIPT_DIR)   # python_code/
+    RESULTS_DIR = os.path.join(PROJECT_DIR, 'results')
+
     # 加载分歧度分析结果（包含各算法预测值）
-    div_path = os.path.join(out_dir, 'divergence_analysis.json')
+    div_path = os.path.join(RESULTS_DIR, 'divergence_analysis.json')
     if not os.path.exists(div_path):
         print(f"请先运行 _analyze_divergence.py 生成 {div_path}")
         return
@@ -17,7 +20,10 @@ def main():
         divergence_data = json.load(f)
 
     # 加载集成结果
-    ens_path = os.path.join(out_dir, 'unified_ensemble_results.json')
+    ens_path = os.path.join(RESULTS_DIR, 'unified_ensemble_results.json')
+    if not os.path.exists(ens_path):
+        print(f"请先运行 _run_unified_ensemble.py 生成 {ens_path}")
+        return
     with open(ens_path, 'r') as f:
         ensemble_data = json.load(f)
 
@@ -121,17 +127,17 @@ def main():
         }
 
     # 保存结果
-    out_path = os.path.join(out_dir, 'statistical_tests.json')
+    out_path = os.path.join(RESULTS_DIR, 'statistical_tests.json')
     with open(out_path, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"\n统计检验结果已保存: {out_path}")
 
     # 生成CSV汇总表
-    csv_path = os.path.join(out_dir, 'statistical_tests_summary.csv')
+    csv_path = os.path.join(RESULTS_DIR, 'statistical_tests_summary.csv')
     with open(csv_path, 'w') as f:
         f.write('Dataset,BestSingle,SingleMAE,EnsembleMAE,Improvement(%),WilcoxonP,FriedmanP,Significant\n')
         for ds_name, r in results.items():
-            if r['ensemble_mae']:
+            if r['ensemble_mae'] is not None:
                 sig = 'Yes' if r['wilcoxon_p'] < 0.05 else 'No'
                 f.write(f"{ds_name},{r['best_single_method']},{r['best_single_mae']:.4f},{r['ensemble_mae']:.4f},{r['improvement']:.2f},{r['wilcoxon_p']:.4f},{r['friedman_p']:.4f},{sig}\n")
 

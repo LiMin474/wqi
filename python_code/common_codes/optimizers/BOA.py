@@ -19,7 +19,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_BOA(params, XX, YY, cvss, max_iter=2000):
+def SumSqr_BOA(params, XX, YY, cvss, max_iter=300):
     n_layers, layer1, layer2, activation, alpha = params
 
     if n_layers == 1:
@@ -69,7 +69,7 @@ def levy_flight(dim, beta=1.5):
     return step
 
 
-def a4_BOA_fitrnet_opt(Pred, Resp):
+def a4_BOA_fitrnet_opt(Pred, Resp, max_evals=60):
     """
     Baboon Optimization Algorithm (BOA) for ANN hyperparameter tuning.
     
@@ -93,7 +93,6 @@ def a4_BOA_fitrnet_opt(Pred, Resp):
 
     # --- BOA parameters ---
     popsize = 15                       # population size
-    max_evals = 60                     # max evaluations (matches other algorithms)
     p1 = 0.15                          # leader layer proportion (top p1)
     p2 = 0.30                          # adult layer proportion
     p3 = 1.0 - p1 - p2                # juvenile layer proportion (= 0.55)
@@ -259,7 +258,7 @@ def a4_BOA_fitrnet_opt(Pred, Resp):
     best_idx = np.argmin(fitness)
     best_x = pop[best_idx]
     best_params = decode_params(best_x)
-    target, output = SumSqr_BOA(best_params, Pred, Resp, cvss, max_iter=2000)
+    target, output = SumSqr_BOA(best_params, Pred, Resp, cvss, max_iter=300)
 
     Mdl = output['Mdl']
     A1 = {

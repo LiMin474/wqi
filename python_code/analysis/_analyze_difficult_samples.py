@@ -96,10 +96,15 @@ def analyze_difficult_samples(ds_name, ds_path, methods):
     }
 
 def main():
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_DIR = os.path.dirname(SCRIPT_DIR)   # python_code/
+    DATASET_DIR = os.path.join(PROJECT_DIR, 'datasets')
+    RESULTS_DIR = os.path.join(PROJECT_DIR, 'results')
+
     datasets = {
-        'Jajpur': 'datasets/1_jajpur.npz',
-        'Irish': 'datasets/2_irish_river.npz',
-        'AKH': 'datasets/3_akh_wqi.npz'
+        'Jajpur': os.path.join(DATASET_DIR, '1_jajpur.npz'),
+        'Irish': os.path.join(DATASET_DIR, '2_irish_river.npz'),
+        'AKH': os.path.join(DATASET_DIR, '3_akh_wqi.npz')
     }
 
     # 六个进化算法
@@ -117,13 +122,12 @@ def main():
         results[ds_name] = analyze_difficult_samples(ds_name, ds_path, methods)
 
     # 保存结果
-    out_dir = 'results'
-    os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, 'difficult_samples.json'), 'w') as f:
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    with open(os.path.join(RESULTS_DIR, 'difficult_samples.json'), 'w') as f:
         json.dump(results, f, indent=2)
-    print(f"\n困难样本分析结果已保存: {out_dir}/difficult_samples.json")
+    print(f"\n困难样本分析结果已保存: {os.path.join(RESULTS_DIR, 'difficult_samples.json')}")
 
-    # 生成散点图数据（实际vs预测）
+    # 生成散点图数据（实际vs预测）— 使用_difficult后缀避免覆盖主实验CSV
     for ds_name, result in results.items():
         ds_path = datasets[ds_name]
         data = np.load(ds_path)
@@ -149,16 +153,16 @@ def main():
                 'is_difficult': is_difficult
             })
 
-        with open(os.path.join(out_dir, f'scatter_{ds_name}.json'), 'w') as f:
+        with open(os.path.join(RESULTS_DIR, f'scatter_{ds_name}_difficult.json'), 'w') as f:
             json.dump(scatter_data, f, indent=2)
 
         # 生成CSV
-        with open(os.path.join(out_dir, f'scatter_{ds_name}.csv'), 'w') as f:
+        with open(os.path.join(RESULTS_DIR, f'scatter_{ds_name}_difficult.csv'), 'w') as f:
             f.write('Actual,Ensemble_Pred,IsDifficult\n')
             for item in scatter_data:
                 f.write(f"{item['actual']:.4f},{item['ensemble_pred']:.4f},{item['is_difficult']}\n")
 
-        print(f"散点图数据已保存: {out_dir}/scatter_{ds_name}.csv")
+        print(f"散点图数据已保存: {os.path.join(RESULTS_DIR, f'scatter_{ds_name}_difficult.csv')}")
 
 if __name__ == '__main__':
     main()

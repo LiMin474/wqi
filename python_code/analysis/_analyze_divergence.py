@@ -80,10 +80,15 @@ def analyze_divergence(ds_name, ds_path, methods):
     }
 
 def main():
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_DIR = os.path.dirname(SCRIPT_DIR)   # python_code/
+    DATASET_DIR = os.path.join(PROJECT_DIR, 'datasets')
+    RESULTS_DIR = os.path.join(PROJECT_DIR, 'results')
+
     datasets = {
-        'AKH': 'datasets/3_akh_wqi.npz',
-        'Irish': 'datasets/2_irish_river.npz',
-        'Jajpur': 'datasets/1_jajpur.npz'
+        'AKH': os.path.join(DATASET_DIR, '3_akh_wqi.npz'),
+        'Irish': os.path.join(DATASET_DIR, '2_irish_river.npz'),
+        'Jajpur': os.path.join(DATASET_DIR, '1_jajpur.npz')
     }
 
     # 六个进化算法
@@ -101,18 +106,17 @@ def main():
         results[ds_name] = analyze_divergence(ds_name, ds_path, methods)
 
     # 保存结果
-    out_dir = 'results'
-    os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, 'divergence_analysis.json'), 'w') as f:
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    with open(os.path.join(RESULTS_DIR, 'divergence_analysis.json'), 'w') as f:
         json.dump(results, f, indent=2)
-    print(f"\n分歧度分析结果已保存: {out_dir}/divergence_analysis.json")
+    print(f"\n分歧度分析结果已保存: {os.path.join(RESULTS_DIR, 'divergence_analysis.json')}")
 
     # 生成CSV格式的相关系数矩阵（用于Origin画热图）
     for ds_name, result in results.items():
         method_names = result['method_names']
         corr_matrix = result['correlation_matrix']
 
-        with open(os.path.join(out_dir, f'correlation_matrix_{ds_name}.csv'), 'w') as f:
+        with open(os.path.join(RESULTS_DIR, f'correlation_matrix_{ds_name}.csv'), 'w') as f:
             # 写表头
             f.write(',' + ','.join(method_names) + '\n')
             # 写数据
@@ -120,7 +124,7 @@ def main():
                 row = m + ',' + ','.join([f"{corr_matrix[i][j]:.4f}" for j in range(len(method_names))])
                 f.write(row + '\n')
 
-        print(f"相关系数矩阵CSV已保存: {out_dir}/correlation_matrix_{ds_name}.csv")
+        print(f"相关系数矩阵CSV已保存: {os.path.join(RESULTS_DIR, f'correlation_matrix_{ds_name}.csv')}")
 
     # 生成汇总表
     summary = []
@@ -131,12 +135,12 @@ def main():
             'avg_std': result['avg_std']
         })
 
-    with open(os.path.join(out_dir, 'divergence_summary.csv'), 'w') as f:
+    with open(os.path.join(RESULTS_DIR, 'divergence_summary.csv'), 'w') as f:
         f.write('Dataset,AvgCorrelation,AvgStd\n')
         for s in summary:
             f.write(f"{s['dataset']},{s['avg_correlation']:.4f},{s['avg_std']:.4f}\n")
 
-    print(f"分歧度汇总表已保存: {out_dir}/divergence_summary.csv")
+    print(f"分歧度汇总表已保存: {os.path.join(RESULTS_DIR, 'divergence_summary.csv')}")
 
 if __name__ == '__main__':
     main()

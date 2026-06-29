@@ -1,6 +1,6 @@
 import numpy as np
 from skopt import gp_minimize
-from skopt.space import Integer, Categorical
+from skopt.space import Integer, Categorical, Real
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
@@ -14,6 +14,7 @@ def SumSqr(params, XX, YY, cvss):
     layer1 = int(params[1])
     layer2 = int(params[2])
     activation = params[3]
+    alpha = float(params[4])
 
     if n_layers == 1:
         hidden_layer_sizes = (layer1,)
@@ -30,7 +31,8 @@ def SumSqr(params, XX, YY, cvss):
             hidden_layer_sizes=hidden_layer_sizes,
             activation=act_map[activation],
             solver='lbfgs',
-            max_iter=2000,
+            alpha=alpha,
+            max_iter=300,
             random_state=1,
             early_stopping=True
         ))
@@ -44,8 +46,9 @@ def SumSqr(params, XX, YY, cvss):
 
     cv_scores = cross_val_score(Mdl, XX, YY, cv=cvss, scoring='neg_mean_squared_error')
     SSEcv = -cv_scores.sum() * len(YY) / len(cv_scores)
-    R2CV = 1 - (SSEcv / SST)
-    R2 = 1 - (SSEmdl / SST)
+
+    R2 = 1 - SSEmdl / SST
+    R2CV = 1 - SSEcv / SST
 
     output = {'R2': R2, 'R2CV': R2CV, 'Mdl': Mdl}
     target = 1 - R2CV
@@ -57,14 +60,15 @@ def Optopt():
         Integer(1, 2, name='NumLayers'),
         Integer(2, 10, name='Layer_1'),
         Integer(2, 10, name='Layer_2'),
-        Categorical(['tanh', 'sigmoid', 'relu'], name='Activation')
+        Categorical(['tanh', 'sigmoid', 'relu'], name='Activation'),
+        Real(1e-6, 1e-1, 'log-uniform', name='Alpha')
     ]
     return dimensions
 
 
-def a4_Bayesian_fitrnet_opt(Pred, Resp):
+def a4_Bayesian_fitrnet_opt(Pred, Resp, max_evals=60):
     numFolds = 5
-    np.random.seed(1)
+    np.random.seed(2)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
     cvss = list(kf.split(Pred))
@@ -84,8 +88,8 @@ def a4_Bayesian_fitrnet_opt(Pred, Resp):
         objective,
         dimensions,
         acq_func='EI',
-        n_calls=60,
-        random_state=1,
+        n_calls=max_evals,
+        random_state=2,
         verbose=True
     )
 
@@ -102,6 +106,7 @@ def a4_Bayesian_fitrnet_opt(Pred, Resp):
         'Layer_1': int(best_params[1]),
         'Layer_2': int(best_params[2]) if int(best_params[0]) > 1 else 0,
         'Activation': best_params[3],
+        'Alpha': float(best_params[4]),
         'R2': output['R2'],
         'R2CV': output['R2CV'],
         'Bayesian_convergence': bayes_best_so_far.tolist()

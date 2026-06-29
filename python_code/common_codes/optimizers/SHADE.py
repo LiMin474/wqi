@@ -20,7 +20,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_SHADE(params, XX, YY, cvss, max_iter=2000):
+def SumSqr_SHADE(params, XX, YY, cvss, max_iter=300):
     n_layers, layer1, layer2, activation, alpha = params
 
     if n_layers == 1:
@@ -60,7 +60,7 @@ def SumSqr_SHADE(params, XX, YY, cvss, max_iter=2000):
     return target, output
 
 
-def a4_SHADE_fitrnet_opt(Pred, Resp):
+def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
     numFolds = 5
     np.random.seed(1)
 
@@ -73,7 +73,6 @@ def a4_SHADE_fitrnet_opt(Pred, Resp):
 
     popsize = 10
     H = 5
-    max_evals = 60
     total_evals = popsize + popsize * ((max_evals - popsize) // popsize)
 
     print(f'  Running SHADE (pop={popsize}, H={H}, ~{total_evals} evaluations)...', flush=True)
@@ -185,7 +184,7 @@ def a4_SHADE_fitrnet_opt(Pred, Resp):
     best_idx = np.argmin(fitness)
     best_x = pop[best_idx]
     best_params = decode_params(best_x)
-    target, output = SumSqr_SHADE(best_params, Pred, Resp, cvss, max_iter=2000)
+    target, output = SumSqr_SHADE(best_params, Pred, Resp, cvss, max_iter=300)
 
     Mdl = output['Mdl']
     A1 = {

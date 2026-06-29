@@ -34,7 +34,7 @@ class EnsembleModel:
 
 def a4_ensemble_stacking(X, y):
     """
-    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算法)
+    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算�?
 
     Level 1: 5-fold CV to generate out-of-fold predictions per base learner.
     Level 2: LinearRegression meta-learner on the 6 predictions.

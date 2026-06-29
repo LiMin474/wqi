@@ -1,0 +1,20 @@
+# Python __pycache__
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+
+# Debug/temp outputs
+python_code/test_error.txt
+python_code/test_output.txt
+extracted_paragraphs.txt
+
+# Misc temp files
+update_docx.py
+
+# OS
+Thumbs.db
+.DS_Store

@@ -26,8 +26,10 @@ COLORS = {
     'Bayesian': '#95A5A6' # Gray (对比方法)
 }
 
-RESULTS_DIR = 'results'
-SAVE_DIR = 'results/figures'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)   # python_code/
+RESULTS_DIR = os.path.join(PROJECT_DIR, 'results')
+SAVE_DIR = os.path.join(RESULTS_DIR, 'figures')
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -140,6 +142,8 @@ def plot_ensemble_gain():
 
         if ds == 'AKH':
             ax.set_ylim(0.6, 0.85)
+        elif ds == 'Irish':
+            ax.set_ylim(0.8, 1.01)
         else:
             ax.set_ylim(0.94, 1.01)
 
@@ -277,8 +281,8 @@ def plot_correlation_heatmap():
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    sns.heatmap(df, annot=True, fmt='.3f', cmap='RdBu_r',
-                vmin=0.9, vmax=1.0, center=0.95,
+    sns.heatmap(df, annot=True, fmt='.4f', cmap='RdBu_r',
+                vmin=0.99, vmax=1.0, center=0.995,
                 square=True, linewidths=0.5,
                 cbar_kws={'label': 'Pearson Correlation'})
 
@@ -358,12 +362,15 @@ def plot_correlation_heatmaps():
         try:
             df = pd.read_csv(os.path.join(RESULTS_DIR, f'correlation_matrix_{ds}.csv'), index_col=0)
 
-            sns.heatmap(df, annot=True, fmt='.2f', cmap='coolwarm',
-                        vmin=-1, vmax=1, center=0,
+            # Per-dataset color range to show meaningful differences
+            vmin_map = {'Jajpur': 0.99, 'Irish': 0.95, 'AKH': 0.88}
+            center_map = {'Jajpur': 0.995, 'Irish': 0.97, 'AKH': 0.94}
+            sns.heatmap(df, annot=True, fmt='.4f', cmap='RdBu_r',
+                        vmin=vmin_map[ds], vmax=1.0, center=center_map[ds],
                         square=True, linewidths=0.3,
                         ax=ax, cbar_kws={'shrink': 0.5},
                         annot_kws={'fontsize': 7})
-            ax.set_title(f'{ds} Dataset - Feature Correlation')
+            ax.set_title(f'{ds} Dataset - Algorithm Correlation')
         except FileNotFoundError:
             ax.text(0.5, 0.5, f'Data not found for {ds}', ha='center', va='center')
 

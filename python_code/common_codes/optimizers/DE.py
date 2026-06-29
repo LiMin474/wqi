@@ -48,7 +48,7 @@ def SumSqr_DE(params, XX, YY, cvss):
             activation=act_map[activation],
             solver='lbfgs',
             alpha=alpha,
-            max_iter=2000,
+            max_iter=300,
             random_state=1,
             early_stopping=True
         ))
@@ -70,9 +70,9 @@ def SumSqr_DE(params, XX, YY, cvss):
     return target, output
 
 
-def a4_DE_fitrnet_opt(Pred, Resp):
+def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60):
     numFolds = 5
-    np.random.seed(1)
+    np.random.seed(7)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
     cvss = list(kf.split(Pred))
@@ -80,6 +80,9 @@ def a4_DE_fitrnet_opt(Pred, Resp):
     n_params = 5
     bounds = [(0.0, 1.0)] * n_params
 
+    popsize = 2
+    n_init = popsize * n_params
+    maxiter = max(1, (max_evals - n_init) // (popsize * n_params))
     eval_count = [0]
     best_target = [float('inf')]
     best_r2cv = [0.0]
@@ -98,13 +101,13 @@ def a4_DE_fitrnet_opt(Pred, Resp):
                   f'L1={params[1]}, L2={params[2]}, Act={params[3]}, Alpha={params[4]:.6f}')
         return target
 
-    print(f'  Running Differential Evolution (popsize=2, maxiter=5, ~60 evaluations)...')
+    print(f'  Running Differential Evolution (popsize={popsize}, maxiter={maxiter}, ~{max_evals} evaluations)...')
 
     res = differential_evolution(
         objective,
         bounds,
-        popsize=2,
-        maxiter=5,
+        popsize=popsize,
+        maxiter=maxiter,
         mutation=(0.5, 1.5),
         recombination=0.7,
         seed=1,

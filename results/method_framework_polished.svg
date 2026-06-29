@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1020" viewBox="0 0 1800 1020"><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#4B5563"/></marker></defs><rect width="100%" height="100%" fill="#FFFFFF"/><rect x="50" y="80" width="360" height="370" rx="22" fill="#FCFCFD" stroke="#C7D2DE" stroke-width="2"/>
+<rect x="470" y="80" width="1280" height="450" rx="22" fill="#FCFCFD" stroke="#C7D2DE" stroke-width="2"/>
+<rect x="320" y="620" width="1040" height="280" rx="22" fill="#FCFCFD" stroke="#C7D2DE" stroke-width="2"/>
+<text x="100" y="118.0" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#243B53" text-anchor="start">
+<tspan x="100" dy="0">Stage 1  Data Preparation</tspan>
+</text>
+<text x="520" y="118.0" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#243B53" text-anchor="start">
+<tspan x="520" dy="0">Stage 2  Hyperparameter Optimization via Six Evolutionary Algorithms</tspan>
+</text>
+<text x="370" y="658.0" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#243B53" text-anchor="start">
+<tspan x="370" dy="0">Stage 3  Ensemble Construction and Final Evaluation</tspan>
+</text>
+<rect x="90" y="170" width="280" height="120" rx="16" fill="#EEF4FF" stroke="#8AA0C8" stroke-width="2"/>
+<text x="230" y="212.3" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="230" dy="0">Three WQI Datasets</tspan>
+<tspan x="230" dy="29.700000000000003">Jajpur-Groundwater | Irish-River-CCME | AKH-WQI</tspan>
+</text>
+<rect x="90" y="340" width="280" height="90" rx="16" fill="#F5F7FA" stroke="#8AA0C8" stroke-width="2"/>
+<text x="230" y="374.65" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#243B53" text-anchor="middle">
+<tspan x="230" dy="0">Preprocessing and Split</tspan>
+<tspan x="230" dy="28.35">8:2 hold-out + 5-fold CV</tspan>
+</text>
+<line x1="230" y1="290" x2="230" y2="340" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<line x1="370" y1="300" x2="470" y2="300" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="860" y="145" width="420" height="95" rx="16" fill="#EAF6F2" stroke="#4E8B7A" stroke-width="2"/>
+<text x="1070" y="181.6" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1070" dy="0">ANN Hyperparameter Search</tspan>
+<tspan x="1070" dy="32.400000000000006">via Six Evolutionary Optimizers</tspan>
+</text>
+<rect x="590" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="640" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="640" dy="0">DE</tspan>
+</text>
+<rect x="760" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="810" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="810" dy="0">SHADE</tspan>
+</text>
+<rect x="930" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="980" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="980" dy="0">CMA-ES</tspan>
+</text>
+<rect x="1100" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="1150" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1150" dy="0">NRBO</tspan>
+</text>
+<rect x="1270" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="1320" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1320" dy="0">BOA</tspan>
+</text>
+<rect x="1440" y="330" width="100" height="62" rx="16" fill="#F3F0FF" stroke="#9A89D0" stroke-width="2"/>
+<text x="1490" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1490" dy="0">HHO-Lite</tspan>
+</text>
+<rect x="860" y="455" width="420" height="78" rx="16" fill="#F5F7FA" stroke="#5B7C99" stroke-width="2"/>
+<text x="1070" y="494.0" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1070" dy="0">Six optimized ANN base models</tspan>
+</text>
+<path d="M 1070 240 Q 640 255 640 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 640 392 Q 640 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1070 240 Q 810 255 810 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 810 392 Q 810 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1070 240 Q 980 255 980 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 980 392 Q 980 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1070 240 Q 1150 255 1150 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1150 392 Q 1150 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1070 240 Q 1320 255 1320 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1320 392 Q 1320 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1070 240 Q 1490 255 1490 330" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M 1490 392 Q 1490 445 1070 455" fill="none" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<rect x="430" y="720" width="350" height="110" rx="16" fill="#FFF8E8" stroke="#C79B2C" stroke-width="2"/>
+<text x="605" y="763.6" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="605" dy="0">WeightedAvg Ensemble</tspan>
+<tspan x="605" dy="32.400000000000006">Weights derived from normalized R²CV</tspan>
+</text>
+<rect x="915" y="720" width="350" height="110" rx="16" fill="#EEF4FF" stroke="#5B7C99" stroke-width="2"/>
+<text x="1090" y="764.3" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#243B53" text-anchor="middle">
+<tspan x="1090" dy="0">Final Ensemble Prediction</tspan>
+<tspan x="1090" dy="29.700000000000003">Metrics: R², R²CV, RMSE, MAE, Time</tspan>
+</text>
+<line x1="1070" y1="533" x2="605" y2="720" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<line x1="780" y1="775" x2="915" y2="775" stroke="#4B5563" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="900" y="965.0" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#52606D" text-anchor="middle">
+<tspan x="900" dy="0">Framework of the proposed multi-evolutionary-algorithm ANN optimization and R²CV-weighted ensemble strategy</tspan>
+</text>
+</svg>
