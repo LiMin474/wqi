@@ -6,9 +6,10 @@ from sklearn.pipeline import Pipeline
 import sys
 import warnings
 warnings.filterwarnings('ignore')
+from common_codes.models import DEFAULT_CONFIG
 
 
-def decode_params(x):
+def _decode(x):
     n_layers = 1 if x[0] < 0.5 else 2
     layer1 = int(round(2 + x[1] * 8))
     layer1 = max(2, min(10, layer1))
@@ -20,7 +21,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_SHADE(params, XX, YY, cvss, max_iter=300):
+def _evaluate(params, XX, YY, cvss, max_iter=300):
     n_layers, layer1, layer2, activation, alpha = params
 
     if n_layers == 1:
@@ -60,8 +61,14 @@ def SumSqr_SHADE(params, XX, YY, cvss, max_iter=300):
     return target, output
 
 
-def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
+def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60, model_config=None):
     numFolds = 5
+    if model_config is None:
+        model_config = DEFAULT_CONFIG
+    _decode = model_config['decode']
+    _evaluate = model_config['evaluate']
+    _get_param_dict = model_config['get_param_dict']
+    _param_names = model_config['param_names']
     np.random.seed(1)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
@@ -92,8 +99,8 @@ def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
     convergence_history = []
 
     for i in range(popsize):
-        params = decode_params(pop[i])
-        target, output = SumSqr_SHADE(params, Pred, Resp, cvss, max_iter=300)
+        params = _decode(pop[i])
+        target, output = _evaluate(params, Pred, Resp, cvss)
         fitness[i] = target
         eval_count += 1
 
@@ -102,7 +109,7 @@ def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
             best_r2cv = output['R2CV']
             convergence_history.append((eval_count, best_r2cv))
             print(f'  SHADE init {i+1:2d}/{popsize}: R2CV={output["R2CV"]:.4f} | '
-                  f'L1={params[1]}, L2={params[2]}, Act={params[3]}, Alpha={params[4]:.6f}', flush=True)
+                  f'params={params}', flush=True)
 
     gen = 0
     while eval_count < max_evals:
@@ -140,8 +147,8 @@ def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
             trial[j_rand] = mutant[j_rand]
             trial = np.clip(trial, bounds_low, bounds_high)
 
-            params_t = decode_params(trial)
-            target_t, output_t = SumSqr_SHADE(params_t, Pred, Resp, cvss, max_iter=300)
+            params_t = _decode(trial)
+            target_t, output_t = _evaluate(params_t, Pred, Resp, cvss)
             eval_count += 1
 
             if target_t < fitness[i]:
@@ -159,7 +166,7 @@ def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
                 best_r2cv = output_t['R2CV']
                 convergence_history.append((eval_count, best_r2cv))
                 print(f'  SHADE gen {gen} eval {eval_count:3d}: R2CV={output_t["R2CV"]:.4f} | '
-                      f'L1={params_t[1]}, L2={params_t[2]}, Act={params_t[3]}, Alpha={params_t[4]:.6f}', flush=True)
+                      f'params={params_t}', flush=True)
 
             if eval_count >= max_evals:
                 break
@@ -183,20 +190,14 @@ def a4_SHADE_fitrnet_opt(Pred, Resp, max_evals=60):
 
     best_idx = np.argmin(fitness)
     best_x = pop[best_idx]
-    best_params = decode_params(best_x)
-    target, output = SumSqr_SHADE(best_params, Pred, Resp, cvss, max_iter=300)
+    best_params = _decode(best_x)
+    target, output = _evaluate(best_params, Pred, Resp, cvss)
 
     Mdl = output['Mdl']
-    A1 = {
-        'NumLayers': best_params[0],
-        'Layer_1': best_params[1],
-        'Layer_2': best_params[2],
-        'Activation': best_params[3],
-        'Alpha': best_params[4],
-        'R2': output['R2'],
-        'R2CV': output['R2CV'],
-        'SHADE_evals': eval_count,
-        'SHADE_convergence': convergence_history
-    }
+    A1 = _get_param_dict(best_params)
+    A1['R2'] = output['R2']
+    A1['R2CV'] = output['R2CV']
+    A1['SHADE_evals'] = eval_count
+    A1['SHADE_convergence'] = convergence_history
 
     return Mdl, A1

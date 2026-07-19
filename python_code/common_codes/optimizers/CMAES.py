@@ -6,9 +6,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import warnings
 warnings.filterwarnings('ignore')
+from common_codes.models import DEFAULT_CONFIG
 
 
-def decode_params(x):
+def _decode(x):
     n_layers = 1 if x[0] < 0.5 else 2
     layer1 = int(round(2 + x[1] * 8))
     layer1 = max(2, min(10, layer1))
@@ -20,7 +21,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_CMAES(params, XX, YY, cvss, max_iter=300):
+def _evaluate(params, XX, YY, cvss, max_iter=300):
     n_layers, layer1, layer2, activation, alpha = params
 
     if n_layers == 1:
@@ -60,8 +61,14 @@ def SumSqr_CMAES(params, XX, YY, cvss, max_iter=300):
     return target, output
 
 
-def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50):
+def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50, model_config=None):
     numFolds = 5
+    if model_config is None:
+        model_config = DEFAULT_CONFIG
+    _decode = model_config['decode']
+    _evaluate = model_config['evaluate']
+    _get_param_dict = model_config['get_param_dict']
+    _param_names = model_config['param_names']
     np.random.seed(7)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
@@ -100,8 +107,8 @@ def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50):
         fitnesses = []
         for x in solutions:
             x_clipped = np.clip(x, 0.0, 1.0)
-            params = decode_params(x_clipped)
-            target, output = SumSqr_CMAES(params, Pred, Resp, cvss, max_iter=300)
+            params = _decode(x_clipped)
+            target, output = _evaluate(params, Pred, Resp, cvss)
             fitnesses.append(target)
             eval_count += 1
 
@@ -110,8 +117,7 @@ def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50):
                 best_r2cv = output['R2CV']
                 convergence_history.append((eval_count, best_r2cv))
                 print(f'  CMA-ES eval {eval_count:3d}: R2CV={best_r2cv:.4f} | '
-                      f'L1={params[1]}, L2={params[2]}, '
-                      f'Act={params[3]}, Alpha={params[4]:.6f}', flush=True)
+                      f'params={params}', flush=True)
 
         es.tell(solutions, fitnesses)
 
@@ -119,20 +125,14 @@ def a4_CMAES_fitrnet_opt(Pred, Resp, max_evals=50):
 
     best_x = es.result.xbest
     best_x = np.clip(best_x, 0.0, 1.0)
-    best_params = decode_params(best_x)
-    target, output = SumSqr_CMAES(best_params, Pred, Resp, cvss, max_iter=300)
+    best_params = _decode(best_x)
+    target, output = _evaluate(best_params, Pred, Resp, cvss)
 
     Mdl = output['Mdl']
-    A1 = {
-        'NumLayers': best_params[0],
-        'Layer_1': best_params[1],
-        'Layer_2': best_params[2],
-        'Activation': best_params[3],
-        'Alpha': best_params[4],
-        'R2': output['R2'],
-        'R2CV': output['R2CV'],
-        'CMAES_evals': eval_count,
-        'CMAES_convergence': convergence_history
-    }
+    A1 = _get_param_dict(best_params)
+    A1['R2'] = output['R2']
+    A1['R2CV'] = output['R2CV']
+    A1['CMAES_evals'] = eval_count
+    A1['CMAES_convergence'] = convergence_history
 
     return Mdl, A1

@@ -8,6 +8,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 
+from common_codes.models import DEFAULT_CONFIG
+
 # 六个进化算法（不含贝叶斯，贝叶斯是对比方法）
 from common_codes.optimizers.DE import a4_DE_fitrnet_opt              # DE (1997)
 from common_codes.optimizers.SHADE import a4_SHADE_fitrnet_opt        # SHADE (2013)
@@ -32,13 +34,16 @@ class EnsembleModel:
         return self.meta.predict(preds)
 
 
-def a4_ensemble_stacking(X, y):
+def a4_ensemble_stacking(X, y, model_config=None):
     """
-    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算�?
+    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算法)
 
     Level 1: 5-fold CV to generate out-of-fold predictions per base learner.
     Level 2: LinearRegression meta-learner on the 6 predictions.
     """
+    if model_config is None:
+        model_config = DEFAULT_CONFIG
+
     n_folds = 5
     X = np.asarray(X, dtype=float)
     y = np.asarray(y, dtype=float).ravel()
@@ -62,7 +67,7 @@ def a4_ensemble_stacking(X, y):
         for train_idx, val_idx in kf.split(X):
             X_tr, X_va = X[train_idx], X[val_idx]
             y_tr, y_va = y[train_idx], y[val_idx]
-            Mdl, _ = func(X_tr, y_tr)
+            Mdl, _ = func(X_tr, y_tr, model_config=model_config)
             yp = Mdl.predict(X_va)
             oof_preds[val_idx, j] = yp
             ssr = np.sum((y_va - yp) ** 2)
@@ -92,7 +97,7 @@ def a4_ensemble_stacking(X, y):
     print('  === Final: re-train base models on full data ===')
     final_models = {}
     for name, func in zip(algo_names, algo_funcs):
-        Mdl, _ = func(X, y)
+        Mdl, _ = func(X, y, model_config=model_config)
         final_models[name] = Mdl
 
     full_preds = np.column_stack([
@@ -106,11 +111,7 @@ def a4_ensemble_stacking(X, y):
     A1 = {
         'R2': r2_full,
         'R2CV': ensemble_r2cv,
-        'NumLayers': -1,
-        'Layer_1': -1,
-        'Layer_2': -1,
-        'Activation': 'Ensemble-Stacking',
-        'Alpha': -1,
+        'Model': model_config['name'],
         'algo_names': algo_names,
         'algo_r2cv': algo_r2cv,
         'meta_coef': coefs.tolist(),

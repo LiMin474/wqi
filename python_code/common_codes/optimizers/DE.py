@@ -6,9 +6,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import warnings
 warnings.filterwarnings('ignore')
+from common_codes.models import DEFAULT_CONFIG
 
 
-def decode_params(x):
+def _decode(x):
     """
     Decode [0,1]^5 vector into actual ANN hyperparameters.
     x[0] -> NumLayers:      1 or 2
@@ -28,7 +29,7 @@ def decode_params(x):
     return n_layers, layer1, layer2, activation, alpha
 
 
-def SumSqr_DE(params, XX, YY, cvss):
+def _evaluate(params, XX, YY, cvss):
     """
     params = (n_layers, layer1, layer2, activation, alpha)
     """
@@ -70,8 +71,14 @@ def SumSqr_DE(params, XX, YY, cvss):
     return target, output
 
 
-def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60):
+def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60, model_config=None):
     numFolds = 5
+    if model_config is None:
+        model_config = DEFAULT_CONFIG
+    _decode = model_config['decode']
+    _evaluate = model_config['evaluate']
+    _get_param_dict = model_config['get_param_dict']
+    _param_names = model_config['param_names']
     np.random.seed(7)
 
     kf = KFold(n_splits=numFolds, shuffle=True, random_state=1)
@@ -89,8 +96,8 @@ def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60):
     convergence_history = []      # list of (eval_num, R2CV) tuples
 
     def objective(x):
-        params = decode_params(x)
-        target, output = SumSqr_DE(params, Pred, Resp, cvss)
+        params = _decode(x)
+        target, output = _evaluate(params, Pred, Resp, cvss)
         eval_count[0] += 1
         if target < best_target[0]:
             best_target[0] = target
@@ -98,7 +105,7 @@ def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60):
             convergence_history.append((eval_count[0], best_r2cv[0]))
             print(f'  DE eval {eval_count[0]}: best so far -> '
                   f'R2={output["R2"]:.4f}, R2CV={best_r2cv[0]:.4f} | '
-                  f'L1={params[1]}, L2={params[2]}, Act={params[3]}, Alpha={params[4]:.6f}')
+                  f'params={params}')
         return target
 
     print(f'  Running Differential Evolution (popsize={popsize}, maxiter={maxiter}, ~{max_evals} evaluations)...')
@@ -118,20 +125,14 @@ def a4_DE_fitrnet_opt(Pred, Resp, max_evals=60):
     print(f'  DE complete: {res.nfev} evaluations, best R2CV={best_r2cv[0]:.4f}')
     print(f'  Computing final model with best params...')
     best_x = res.x
-    best_params = decode_params(best_x)
-    target, output = SumSqr_DE(best_params, Pred, Resp, cvss)
+    best_params = _decode(best_x)
+    target, output = _evaluate(best_params, Pred, Resp, cvss)
 
     Mdl = output['Mdl']
-    A1 = {
-        'NumLayers': best_params[0],
-        'Layer_1': best_params[1],
-        'Layer_2': best_params[2],
-        'Activation': best_params[3],
-        'Alpha': best_params[4],
-        'R2': output['R2'],
-        'R2CV': output['R2CV'],
-        'DE_nfev': res.nfev,
-        'DE_convergence': convergence_history
-    }
+    A1 = _get_param_dict(best_params)
+    A1['R2'] = output['R2']
+    A1['R2CV'] = output['R2CV']
+    A1['DE_evals'] = res.nfev
+    A1['DE_convergence'] = convergence_history
 
     return Mdl, A1
