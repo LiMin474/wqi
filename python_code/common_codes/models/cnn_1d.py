@@ -79,7 +79,7 @@ def cnn_1d_evaluate(params, XX, YY, cvss):
         ('cnn', KerasRegressor(
             model=build_fn,
             batch_size=batch_size,
-            epochs=30,
+            epochs=10,
             verbose=0,
             random_state=1,
         ))

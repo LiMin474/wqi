@@ -84,7 +84,7 @@ def cnn_1d_pt_evaluate(params, XX, YY, cvss):
             optimizer=torch.optim.Adam,
             optimizer__lr=lr,
             batch_size=batch_size,
-            max_epochs=30,
+            max_epochs=10,
             verbose=0,
             device=device,
         ))
