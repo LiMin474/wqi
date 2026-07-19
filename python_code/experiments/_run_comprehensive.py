@@ -213,9 +213,9 @@ def main():
 
     # 每个算法/数据集的评估预算
     param_config = {
-        'Jajpur': {'DE': 60, 'SHADE': 60, 'CMA-ES': 50, 'NRBO': 60, 'BOA': 60, 'HHO-Lite': 60},
-        'Irish':  {'DE': 80, 'SHADE': 80, 'CMA-ES': 60, 'NRBO': 80, 'BOA': 80, 'HHO-Lite': 80},
-        'AKH':    {'DE': 80, 'SHADE': 80, 'CMA-ES': 60, 'NRBO': 80, 'BOA': 80, 'HHO-Lite': 80}
+        'Jajpur': {'DE': 50, 'SHADE': 50, 'CMA-ES': 50, 'NRBO': 50, 'BOA': 50, 'HHO-Lite': 50},
+        'Irish':  {'DE': 60, 'SHADE': 60, 'CMA-ES': 60, 'NRBO': 60, 'BOA': 60, 'HHO-Lite': 60},
+        'AKH':    {'DE': 60, 'SHADE': 60, 'CMA-ES': 60, 'NRBO': 60, 'BOA': 60, 'HHO-Lite': 60}
     }
 
     ea_names = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
