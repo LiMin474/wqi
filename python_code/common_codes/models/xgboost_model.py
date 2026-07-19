@@ -5,6 +5,27 @@ XGBoost — 梯度提升树（非NN基准）
 import numpy as np
 
 _XGB_IMPORTED = False
+_HAS_GPU = None
+
+
+def _has_gpu():
+    global _HAS_GPU
+    if _HAS_GPU is None:
+        try:
+            import xgboost as xgb
+            import os
+            os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+            temp_x = np.random.rand(10, 3).astype(np.float32)
+            temp_y = np.random.rand(10).astype(np.float32)
+            test_model = xgb.XGBRegressor(
+                n_estimators=1, max_depth=2, verbosity=0,
+                tree_method='gpu_hist', device='cuda'
+            )
+            test_model.fit(temp_x, temp_y)
+            _HAS_GPU = True
+        except Exception:
+            _HAS_GPU = False
+    return _HAS_GPU
 
 
 def _ensure_imports():
@@ -35,6 +56,8 @@ def xgboost_evaluate(params, XX, YY, cvss):
     _ensure_imports()
     n_estimators, max_depth, learning_rate, subsample, reg_lambda = params
 
+    use_gpu = _has_gpu()
+
     Mdl = Pipeline([
         ('scaler', StandardScaler()),
         ('xgb', XGBRegressor(
@@ -45,6 +68,8 @@ def xgboost_evaluate(params, XX, YY, cvss):
             reg_lambda=reg_lambda,
             random_state=1,
             verbosity=0,
+            tree_method='gpu_hist' if use_gpu else 'auto',
+            device='cuda' if use_gpu else 'cpu',
         ))
     ])
 

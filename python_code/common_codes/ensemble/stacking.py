@@ -10,20 +10,18 @@ from sklearn.metrics import r2_score
 
 from common_codes.models import DEFAULT_CONFIG
 
-# 六个进化算法（不含贝叶斯，贝叶斯是对比方法）
-from common_codes.optimizers.DE import a4_DE_fitrnet_opt              # DE (1997)
-from common_codes.optimizers.SHADE import a4_SHADE_fitrnet_opt        # SHADE (2013)
-from common_codes.optimizers.CMAES import a4_CMAES_fitrnet_opt        # CMA-ES (2006)
-from common_codes.optimizers.NRBO import a4_NRBO_fitrnet_opt          # NRBO (2024)
-from common_codes.optimizers.BOA import a4_BOA_fitrnet_opt            # BOA (2026)
-from common_codes.optimizers.HHO_Lite import a4_HHO_Lite_fitrnet_opt  # HHO-Lite (2025)
+from common_codes.optimizers.DE import a4_DE_fitrnet_opt
+from common_codes.optimizers.SHADE import a4_SHADE_fitrnet_opt
+from common_codes.optimizers.CMAES import a4_CMAES_fitrnet_opt
+from common_codes.optimizers.NRBO import a4_NRBO_fitrnet_opt
+from common_codes.optimizers.BOA import a4_BOA_fitrnet_opt
+from common_codes.optimizers.HHO_Lite import a4_HHO_Lite_fitrnet_opt
 
 
 class EnsembleModel:
-    """Wrapper that holds a meta-learner + 6 base ANNs, exposes .predict()."""
     def __init__(self, meta, base_models, algo_names):
         self.meta = meta
-        self.base_models = base_models    # dict: name -> Mdl
+        self.base_models = base_models
         self.algo_names = algo_names
 
     def predict(self, X):
@@ -34,16 +32,36 @@ class EnsembleModel:
         return self.meta.predict(preds)
 
 
-def a4_ensemble_stacking(X, y, model_config=None):
-    """
-    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite (6个进化算法)
+def _train_model_with_params(params, X, y, model_config):
+    """用固定参数直接训练模型（不优化）"""
+    _evaluate = model_config['evaluate']
+    kf = KFold(n_splits=5, shuffle=True, random_state=1)
+    cvss = list(kf.split(X))
+    target, output = _evaluate(params, X, y, cvss)
+    return output['Mdl']
 
-    Level 1: 5-fold CV to generate out-of-fold predictions per base learner.
-    Level 2: LinearRegression meta-learner on the 6 predictions.
+
+def a4_ensemble_stacking(X, y, model_config=None, max_evals=None):
+    """
+    Stacking ensemble: DE + SHADE + CMA-ES + NRBO + BOA + HHO-Lite
+
+    论文实验设计（严谨且高效）：
+    - 外层 5-fold CV 评估最终性能
+    - 每个外层 fold 内：
+      1. 在 outer_train 上跑 6 个 EA，各得到一组最优超参数（只调一次）
+      2. 固定这 6 组参数，在 outer_train 内做 5-fold OOF 预测，训练 meta learner
+      3. 用固定参数在完整 outer_train 上重训 6 个基模型
+      4. 预测 outer_test，meta learner 输出 stacking 预测
+    - 汇总所有 outer_test 预测计算最终 R2CV
+
+    Parameters:
+        X, y: 训练数据
+        model_config: 模型配置
+        max_evals: 每个 EA 的评估预算
 
     Returns:
         ensemble: EnsembleModel 对象
-        A1: dict with Stacking and WeightedAvg R2CV
+        A1: dict with R2CV values
     """
     if model_config is None:
         model_config = DEFAULT_CONFIG
@@ -53,111 +71,153 @@ def a4_ensemble_stacking(X, y, model_config=None):
     y = np.asarray(y, dtype=float).ravel()
     n = len(y)
 
-    kf = KFold(n_splits=n_folds, shuffle=True, random_state=1)
-
-    # 六个进化算法
     algo_names = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
     algo_funcs = [a4_DE_fitrnet_opt, a4_SHADE_fitrnet_opt,
                   a4_CMAES_fitrnet_opt, a4_NRBO_fitrnet_opt,
                   a4_BOA_fitrnet_opt, a4_HHO_Lite_fitrnet_opt]
 
-    # --- Level 1: out-of-fold predictions ---
-    oof_preds = np.zeros((n, len(algo_names)))
-    # Track per-fold R2 for each algorithm (for WeightedAvg)
-    algo_fold_r2 = {name: [] for name in algo_names}
-    # Track per-fold WeightedAvg R2 (corrected, no leakage)
-    fold_wa_r2_list = []
-    # Track per-fold SimpleAvg R2 (corrected, no leakage)
-    fold_sa_r2_list = []
+    # --- 外层 CV: 评估最终性能 ---
+    print('  === Ensemble: Outer CV for final evaluation ===')
+    outer_kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+    stacking_cv_preds = np.zeros(n)
+    wa_cv_preds = np.zeros(n)
+    sa_cv_preds = np.zeros(n)
 
-    print('  === Ensemble Level 1: 5-fold base learners ===')
-    # Outer: fold, inner: algorithm — so we can compute per-fold WeightedAvg
-    for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X)):
+    for outer_fold_idx, (outer_train_idx, outer_val_idx) in enumerate(outer_kf.split(X)):
+        X_outer_tr = X[outer_train_idx]
+        y_outer_tr = y[outer_train_idx]
+        X_outer_val = X[outer_val_idx]
+        y_outer_val = y[outer_val_idx]
+        n_outer_tr = len(outer_train_idx)
+
+        print(f'    Outer fold {outer_fold_idx + 1}/{n_folds}')
+
+        # --- Step 1: 在 outer_train 上跑 EA 调参（只调一次）---
+        print('      Step 1: EA optimization on outer_train...')
+        outer_tr_models = {}
+        outer_tr_best_params = {}
+        outer_tr_r2cv = {}
+
+        for name, func in zip(algo_names, algo_funcs):
+            kwargs = {'model_config': model_config}
+            if max_evals is not None:
+                kwargs['max_evals'] = max_evals
+            Mdl, A1 = func(X_outer_tr, y_outer_tr, **kwargs)
+            outer_tr_models[name] = Mdl
+            outer_tr_best_params[name] = A1['best_params']
+            outer_tr_r2cv[name] = A1['R2CV']
+
+        # --- Step 2: 固定参数，在 outer_train 内做 5-fold OOF 预测 ---
+        print('      Step 2: OOF predictions with fixed params...')
+        inner_kf = KFold(n_splits=5, shuffle=True, random_state=42)
+        inner_oof = np.zeros((n_outer_tr, len(algo_names)))
+
+        for inner_fold_idx, (inner_tr_idx, inner_val_idx) in enumerate(inner_kf.split(X_outer_tr)):
+            X_inner_tr = X_outer_tr[inner_tr_idx]
+            y_inner_tr = y_outer_tr[inner_tr_idx]
+            X_inner_val = X_outer_tr[inner_val_idx]
+
+            for j, name in enumerate(algo_names):
+                fixed_params = outer_tr_best_params[name]
+                Mdl_inner = _train_model_with_params(fixed_params, X_inner_tr, y_inner_tr, model_config)
+                inner_oof[inner_val_idx, j] = Mdl_inner.predict(X_inner_val)
+
+        # --- Step 3: 训练 meta learner ---
+        print('      Step 3: Train meta learner on OOF...')
+        meta = Pipeline([
+            ('scaler', StandardScaler()),
+            ('lr', LinearRegression())
+        ])
+        meta.fit(inner_oof, y_outer_tr)
+
+        # --- Step 4: 用固定参数在完整 outer_train 上重训基模型 ---
+        print('      Step 4: Retrain base models on full outer_train...')
+        final_base_models = {}
+        for name in algo_names:
+            fixed_params = outer_tr_best_params[name]
+            final_base_models[name] = _train_model_with_params(fixed_params, X_outer_tr, y_outer_tr, model_config)
+
+        # --- Step 5: 预测 outer_test ---
+        outer_val_base_preds = np.column_stack([
+            final_base_models[name].predict(X_outer_val) for name in algo_names
+        ])
+        stacking_cv_preds[outer_val_idx] = meta.predict(outer_val_base_preds).ravel()
+
+        # WeightedAvg 和 SimpleAvg
+        r2cv_scores = [outer_tr_r2cv[name] for name in algo_names]
+        wa_weights = np.array(r2cv_scores) / (np.sum(r2cv_scores) + 1e-12)
+        wa_cv_preds[outer_val_idx] = np.average(outer_val_base_preds, axis=1, weights=wa_weights)
+        sa_cv_preds[outer_val_idx] = np.mean(outer_val_base_preds, axis=1)
+
+        print(f'      Outer fold {outer_fold_idx + 1} done')
+
+    # --- 计算最终 R2CV ---
+    def calc_r2cv(y_true, y_pred):
+        SST = np.sum((y_true - np.mean(y_true)) ** 2)
+        SSE = np.sum((y_true - y_pred) ** 2)
+        return 1 - SSE / SST if SST != 0 else 0
+
+    stacking_r2cv = float(calc_r2cv(y, stacking_cv_preds))
+    wa_r2cv = float(calc_r2cv(y, wa_cv_preds))
+    sa_r2cv = float(calc_r2cv(y, sa_cv_preds))
+
+    print(f'    Stacking R2CV = {stacking_r2cv:.4f}')
+    print(f'    WeightedAvg R2CV = {wa_r2cv:.4f}')
+    print(f'    SimpleAvg R2CV = {sa_r2cv:.4f}')
+
+    # --- 最终模型：在全数据上训练 ---
+    print('  === Final: Train ensemble on full data ===')
+    final_full_models = {}
+    final_full_r2cv = {}
+    final_full_params = {}
+
+    for name, func in zip(algo_names, algo_funcs):
+        kwargs = {'model_config': model_config}
+        if max_evals is not None:
+            kwargs['max_evals'] = max_evals
+        Mdl, A1 = func(X, y, **kwargs)
+        final_full_models[name] = Mdl
+        final_full_r2cv[name] = A1['R2CV']
+        final_full_params[name] = A1['best_params']
+
+    # OOF predictions on full data
+    full_kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    full_oof = np.zeros((n, len(algo_names)))
+
+    for fold_idx, (train_idx, val_idx) in enumerate(full_kf.split(X)):
         X_tr, X_va = X[train_idx], X[val_idx]
-        y_tr, y_va = y[train_idx], y[val_idx]
+        y_tr = y[train_idx]
 
-        fold_preds = np.zeros((len(val_idx), len(algo_names)))
-        fold_r2 = []
+        for j, name in enumerate(algo_names):
+            Mdl_fold = _train_model_with_params(final_full_params[name], X_tr, y_tr, model_config)
+            full_oof[val_idx, j] = Mdl_fold.predict(X_va)
 
-        for j, (name, func) in enumerate(zip(algo_names, algo_funcs)):
-            Mdl, _ = func(X_tr, y_tr, model_config=model_config)
-            yp = Mdl.predict(X_va)
-            fold_preds[:, j] = yp
-            oof_preds[val_idx, j] = yp
-
-            ssr = np.sum((y_va - yp) ** 2)
-            sst = np.sum((y_va - np.mean(y_va)) ** 2)
-            fold_r2_val = 1 - ssr / sst if sst != 0 else 0
-            fold_r2.append(fold_r2_val)
-            algo_fold_r2[name].append(fold_r2_val)
-
-        # --- WeightedAvg within this fold (correct: models trained on train_idx only) ---
-        fold_weights = np.array(fold_r2) / (np.sum(fold_r2) + 1e-12)
-        y_wa = np.average(fold_preds, axis=1, weights=fold_weights)
-        ssr_wa = np.sum((y_va - y_wa) ** 2)
-        sst_wa = np.sum((y_va - np.mean(y_va)) ** 2)
-        fold_wa_r2 = 1 - ssr_wa / sst_wa if sst_wa != 0 else 0
-        fold_wa_r2_list.append(fold_wa_r2)
-
-        # --- SimpleAvg within this fold (correct) ---
-        y_sa = np.mean(fold_preds, axis=1)
-        ssr_sa = np.sum((y_va - y_sa) ** 2)
-        fold_sa_r2 = 1 - ssr_sa / sst_wa if sst_wa != 0 else 0
-        fold_sa_r2_list.append(fold_sa_r2)
-
-    # Corrected WeightedAvg R2CV and SimpleAvg R2CV
-    wa_r2cv = float(np.mean(fold_wa_r2_list))
-    sa_r2cv = float(np.mean(fold_sa_r2_list))
-
-    # Algo R2CV (average across folds)
-    algo_r2cv = {}
-    for name in algo_names:
-        algo_r2cv[name] = float(np.mean(algo_fold_r2[name]))
-        print(f'    {name:<10s}: fold R2={[f"{r:.4f}" for r in algo_fold_r2[name]]}  mean={algo_r2cv[name]:.4f}')
-
-    # --- Level 2: meta-learner ---
-    print('  === Ensemble Level 2: Meta-learner (LinearRegression) ===')
-    meta = Pipeline([
+    # Final meta learner
+    meta_final = Pipeline([
         ('scaler', StandardScaler()),
         ('lr', LinearRegression())
     ])
-    meta.fit(oof_preds, y)
+    meta_final.fit(full_oof, y)
+    coefs = meta_final.named_steps['lr'].coef_
 
-    y_meta_pred = meta.predict(oof_preds)
-    ssr = np.sum((y - y_meta_pred) ** 2)
-    sst = np.sum((y - np.mean(y)) ** 2)
-    ensemble_r2cv = 1 - ssr / sst
-    print(f'    Stacking R2CV = {ensemble_r2cv:.4f}')
-    print(f'    WeightedAvg R2CV (corrected) = {wa_r2cv:.4f}')
-    print(f'    SimpleAvg R2CV (corrected) = {sa_r2cv:.4f}')
-    coefs = meta.named_steps['lr'].coef_
-    for name, c in zip(algo_names, coefs):
-        print(f'      {name} weight = {c:+.4f}')
-
-    # --- Retrain on full data for final R² ---
-    print('  === Final: re-train base models on full data ===')
-    final_models = {}
-    for name, func in zip(algo_names, algo_funcs):
-        Mdl, _ = func(X, y, model_config=model_config)
-        final_models[name] = Mdl
-
-    full_preds = np.column_stack([
-        final_models[name].predict(X) for name in algo_names
+    # Final predictions
+    full_base_preds = np.column_stack([
+        final_full_models[name].predict(X) for name in algo_names
     ])
-    y_full = meta.predict(full_preds)
+    y_full = meta_final.predict(full_base_preds)
     r2_full = r2_score(y, y_full)
 
-    ensemble = EnsembleModel(meta, final_models, algo_names)
+    ensemble = EnsembleModel(meta_final, final_full_models, algo_names)
 
     A1 = {
         'R2': r2_full,
-        'R2CV': ensemble_r2cv,
+        'R2CV': stacking_r2cv,
         'WA_R2CV': wa_r2cv,
         'SA_R2CV': sa_r2cv,
         'Model': model_config['name'],
         'algo_names': algo_names,
-        'algo_r2cv': algo_r2cv,
+        'algo_r2cv': final_full_r2cv,
         'meta_coef': coefs.tolist(),
-        'meta_intercept': float(meta.named_steps['lr'].intercept_),
+        'meta_intercept': float(meta_final.named_steps['lr'].intercept_),
     }
     return ensemble, A1

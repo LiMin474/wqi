@@ -1,6 +1,6 @@
-# 基于多进化算法集成的 ANN 超参数优化用于水质预测
+# 基于多进化算法集成的水质预测超参数优化
 
-六种进化算法（DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite）+ 贝叶斯优化 + WeightedAvg/Stacking 集成
+三种模型（MLP-lbfgs, 1D-CNN, XGBoost）× 六种进化算法（DE, SHADE, CMA-ES, NRBO, BOA, HHO-Lite）× 三种集成方法（SimpleAvg, WeightedAvg, Stacking）× 三个数据集（Jajpur, Irish, AKH）
 
 ---
 
@@ -8,86 +8,108 @@
 
 ```
 python_code/
-├── analysis/                    # 分析工具
-│   ├── _analyze_divergence.py      # 算法分歧度分析
-│   ├── _analyze_difficult_samples.py # 困难样本分析
-│   └── _statistical_tests.py       # 统计显著性检验
-├── common_codes/                # 算法核心模块
+├── analysis/                         # 分析工具
+│   ├── _analyze_divergence.py            # 算法分歧度分析
+│   ├── _analyze_difficult_samples.py     # 困难样本分析
+│   └── _statistical_tests.py             # 统计显著性检验
+├── common_codes/
 │   ├── benchmarks/
-│   │   └── Bayesian.py             # 贝叶斯优化（对比方法）
+│   │   └── Bayesian.py                   # 贝叶斯优化（对比方法，未使用）
 │   ├── ensemble/
-│   │   └── stacking.py             # Stacking集成
-│   └── optimizers/
-│       ├── DE.py                   # 差分进化算法 (1997)
-│       ├── SHADE.py                # 成功历史自适应DE (2013)
-│       ├── CMAES.py                # 协方差矩阵自适应ES (2006)
-│       ├── NRBO.py                 # 牛顿-拉夫逊基优化器 (2024)
-│       ├── BOA.py                  # 狒狒优化算法 (2026)
-│       └── HHO_Lite.py             # 哈里斯鹰优化精简版 (2025)
-├── datasets/                    # 数据集
-│   ├── 1_jajpur.npz                # Jajpur地下水 (74样本, 12特征)
-│   ├── 2_irish_river.npz           # Irish河流 (501样本, 11特征)
-│   └── 3_akh_wqi.npz               # AKH水质 (657样本, 10特征)
-├── experiments/                  # 实验与画图脚本
-│   ├── _run_unified_ensemble.py    # 统一集成实验（核心）
-│   └── _generate_paper_figures.py  # 论文8张图生成
-├── results/                      # 实验结果
-│   ├── unified_ensemble_results.json # 6算法×3数据集+集成完整结果
-│   ├── divergence_analysis.json     # 分歧度分析
-│   ├── statistical_tests.json       # 统计检验
-│   ├── correlation_matrix_*.csv     # 3个数据集的相关系数矩阵
-│   ├── scatter_Jajpur.csv           # Jajpur预测散点数据
-│   └── figures/                     # 8张论文图(PNG+PDF)
-├── 数据集整理.md                 # 数据集说明文档
-└── __init__.py
-AI论文初稿.md                    # 论文初稿
-agent.md                         # 项目核心文档
-README                           # 本文件
+│   │   └── stacking.py                   # Stacking 集成 + 修正的 WeightedAvg/SimpleAvg R²CV
+│   ├── models/                           # 模型配置工厂
+│   │   ├── __init__.py                       # 注册表，按名称获取模型配置
+│   │   ├── mlp_lbfgs.py                     # MLP-lbfgs 参数空间 + evaluate
+│   │   ├── cnn_1d.py                        # 1D-CNN 参数空间 + evaluate
+│   │   └── xgboost_model.py                 # XGBoost 参数空间 + evaluate
+│   └── optimizers/                      # 六种进化算法（均使用 model_config 动态调用，兼容所有模型）
+│       ├── DE.py                            # 差分进化 (1997)
+│       ├── SHADE.py                         # 成功历史自适应差分进化 (2013)
+│       ├── CMAES.py                         # 协方差矩阵自适应进化策略 (2006)
+│       ├── NRBO.py                          # 牛顿-拉夫逊基优化器 (2024)
+│       ├── BOA.py                           # 蝴蝶优化算法 (2026)
+│       └── HHO_Lite.py                      # 哈里斯鹰优化精简版 (2025)
+├── datasets/                          # 数据集
+│   ├── 1_jajpur.npz                       # Jajpur 地下水 (74样本, 12特征)
+│   ├── 2_irish_river.npz                  # Irish 河流 (501样本, 11特征)
+│   └── 3_akh_wqi.npz                      # AKH 水质 (657样本, 10特征)
+├── experiments/                       # 实验脚本
+│   ├── _run_comprehensive.py              # 【主脚本】3模型×3数据集×6EA×3集成
+│   ├── _run_unified_ensemble.py           # （旧版，仅 MLP 时代使用）
+│   ├── _run_jajpur_only.py                # 单数据集调试
+│   ├── _run_irish_only.py
+│   ├── _run_akh_only.py
+│   ├── _generate_paper_figures.py         # 论文图表生成
+│   ├── _verify_all.py                     # 结果验证
+│   └── _verify_all_results.py
+├── results/                           # 实验结果（MLP-lbfgs 已完成）
+│   ├── comprehensive_results.json         # 所有指标汇总
+│   ├── convergence_{Dataset}.csv          # 收敛曲线
+│   ├── scatter_{Dataset}.csv              # 预测散点数据
+│   ├── weights_{Dataset}.csv              # 集成权重
+│   ├── errors_{Dataset}.csv               # 误差分布
+│   └── correlation_{Dataset}.csv          # 预测相关性矩阵
+├── __init__.py
+实验导览/                              # 实验文档
+├── 实验设计_结果.md                    # 完整实验设计 & 结果 & 队友嘱托
+├── 算法原理图解.md                     # 算法原理图示
+└── 实验流程说明.md                     # 运行流程说明
 ```
 
 ---
 
+## 三种模型
+
+| 模型 | 类型 | 框架 | 参数空间（5维） |
+|:----|:----|:----|:--------------|
+| **MLP-lbfgs** | 全连接神经网络 | sklearn | 隐层数、神经元1、神经元2、激活函数、alpha |
+| **1D-CNN** | 一维卷积神经网络 | TensorFlow/Keras | 卷积核数、核大小、学习率、batch_size、dropout |
+| **XGBoost** | 梯度提升树 | xgboost | 树数、最大深度、学习率、subsample、lambda |
+
 ## 六种进化算法
 
-| 算法 | 中文名称 | 年份 | 文件 |
-|:----|:--------|:----:|:----|
-| DE | 差分进化算法 | 1997 | `common_codes/optimizers/DE.py` |
-| SHADE | 成功历史自适应差分进化 | 2013 | `common_codes/optimizers/SHADE.py` |
-| CMA-ES | 协方差矩阵自适应进化策略 | 2006 | `common_codes/optimizers/CMAES.py` |
-| NRBO | 牛顿-拉夫逊基优化器 | 2024 | `common_codes/optimizers/NRBO.py` |
-| BOA | 狒狒优化算法 | 2026 | `common_codes/optimizers/BOA.py` |
-| HHO-Lite | 哈里斯鹰优化精简版 | 2025 | `common_codes/optimizers/HHO_Lite.py` |
+| 算法 | 年份 | 类别 |
+|:----|:----:|:----|
+| DE | 1997 | 基于种群的启发式 |
+| SHADE | 2013 | 自适应进化 |
+| CMA-ES | 2006 | 基于分布模型 |
+| NRBO | 2024 | 数学优化 |
+| BOA | 2026 | 仿生学 |
+| HHO-Lite | 2025 | 仿生学 |
 
----
+## 三种集成方法
 
-## 三个数据集
+| 方法 | 说明 |
+|:----|:-----|
+| **SimpleAvg** | 6个模型等权平均 |
+| **WeightedAvg** | R²CV 归一化加权（5折CV内独立计算，无数据泄漏） |
+| **Stacking (LR)** | 5折OOF预测 + LinearRegression 元学习器 |
 
-| 数据集 | 来源 | 样本数 | 特征数 | WQI范围 | WQI标准差 |
-|:------|:----|:------:|:------:|:--------|:--------:|
-| Jajpur-Groundwater | 印度地下水 | 74 | 12 | 22.38~85.02 | 13.23 |
-| Irish-River-CCME | 爱尔兰EPA河流 | 501 | 11 | 53.48~100.00 | 6.79 |
-| AKH-WQI | 公开地表水 | 657 | 10 | 0.02~97.32 | **25.78** |
+## 评估预算
 
----
+所有算法统一评估次数，保证公平对比：
 
-## 核心结果（R²CV）
+| 数据集 | 评估次数 |
+|:------|:--------:|
+| Jajpur | 50次 |
+| Irish | 60次 |
+| AKH | 60次 |
 
-| 数据集 | 单算法最佳 | 最佳集成 | **增益** |
-|:------|:---------:|:--------:|:--------:|
-| Jajpur-Groundwater | 0.9920 (SHADE) | **0.9960** | **+0.40%** |
-| Irish-River-CCME | 0.9585 (DE) | 0.9709 | +1.29% |
-| AKH-WQI | 0.7440 (SHADE) | **0.7916** | **+6.40%** |
+## 核心结果（MLP-lbfgs）
 
----
+| 数据集 | 最佳单算法 | R²CV | 最佳集成 | R²CV | 增益(pp) |
+|:------|:---------|:----:|:--------|:----:|:--------:|
+| Jajpur | CMA-ES | 0.99740 | Stacking | 0.99862 | +0.12 |
+| Irish | BOA | 0.95901 | Stacking | 0.96716 | **+0.81** |
+| AKH | DE | 0.75565 | Stacking | 0.76815 | **+1.25** |
 
 ## 运行方式
 
-```bash
+```powershell
 cd python_code
-# 设置PYTHONPATH
 $env:PYTHONPATH="."
-# 跑集成实验
-python experiments/_run_unified_ensemble.py
+# 跑完整实验（3个模型依次运行）
+python experiments/_run_comprehensive.py
 # 分歧度分析
 python analysis/_analyze_divergence.py
 # 统计检验（需先跑分歧度分析）
@@ -96,9 +118,8 @@ python analysis/_statistical_tests.py
 python experiments/_generate_paper_figures.py
 ```
 
----
-
 ## 核心文档
 
-- **agent.md** - 项目核心文档（算法说明、实验结果、图例清单）
-- **AI论文初稿.md** - 论文初稿
+- **实验导览/实验设计_结果.md** — 完整实验设计、MLP-lbfgs 结果、队友嘱托
+- **实验导览/算法原理图解.md** — 算法原理图示
+- **实验导览/实验流程说明.md** — 运行流程说明

@@ -293,14 +293,24 @@ def main():
         # --- WeightedAvg ---
         y_weighted, weights = weighted_avg(predictions, r2cv_scores)
         R2_w, RMSE_w, MAE_w = calc_metrics(y, y_weighted)
-        # R²CV for WeightedAvg (5-fold)
+        # R²CV for WeightedAvg (corrected: re-train within each fold)
         kf = KFold(n_splits=5, shuffle=True, random_state=1)
         r2cv_w_list = []
         for train_idx, test_idx in kf.split(X):
             X_train, X_test = X[train_idx], X[test_idx]
             y_train, y_test = y[train_idx], y[test_idx]
-            preds_test = np.array([m.predict(X_test) for m in models])
-            y_pred_w_test, _ = weighted_avg(preds_test, r2cv_scores)
+            fold_models = []
+            for a in ea_names:
+                Mdl_fold, _ = ALGO_NAME_MAP[a](X_train, y_train, max_evals=config[a])
+                fold_models.append(Mdl_fold)
+            preds_test = np.array([m.predict(X_test) for m in fold_models])
+            preds_train = np.array([m.predict(X_train) for m in fold_models])
+            sst_tr = np.sum((y_train - np.mean(y_train)) ** 2)
+            fold_r2_train = []
+            for j in range(len(ea_names)):
+                r2_tr = 1 - np.sum((y_train - preds_train[j]) ** 2) / sst_tr if sst_tr != 0 else 0
+                fold_r2_train.append(r2_tr)
+            y_pred_w_test, _ = weighted_avg(preds_test, fold_r2_train)
             R2CV_w_fold, _, _ = calc_metrics(y_test, y_pred_w_test)
             r2cv_w_list.append(R2CV_w_fold)
         R2CV_w = np.mean(r2cv_w_list)

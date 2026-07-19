@@ -18,11 +18,20 @@ from .mlp_lbfgs import MLP_LBFGS_CONFIG
 from .cnn_1d import CNN_1D_CONFIG
 from .xgboost_model import XGBOOST_CONFIG
 
+try:
+    from .cnn_1d_pytorch import CNN_1D_PT_CONFIG
+    _PT_AVAILABLE = True
+except ImportError:
+    _PT_AVAILABLE = False
+
 MODEL_REGISTRY = {
     'MLP-lbfgs': MLP_LBFGS_CONFIG,
     '1D-CNN': CNN_1D_CONFIG,
     'XGBoost': XGBOOST_CONFIG,
 }
+
+if _PT_AVAILABLE:
+    MODEL_REGISTRY['1D-CNN-PT'] = CNN_1D_PT_CONFIG
 
 DEFAULT_CONFIG = MLP_LBFGS_CONFIG  # 向后兼容
 

@@ -113,7 +113,7 @@ def a4_NRBO_fitrnet_opt(Pred, Resp, max_evals=60, model_config=None):
     beta = 2.0                         # convergence acceleration factor
 
     print(f'  Running NRBO (pop={popsize}, deciding_factor={deciding_factor}, ~{max_evals} evals)...', flush=True)
-    print(f'  Using max_iter=300 for fast search, then final retrain with 2000', flush=True)
+    print(f'  Using max_iter=300 for training', flush=True)
 
     # --- Initialize population ---
     pop = np.random.rand(popsize, n_params)
@@ -226,8 +226,16 @@ def a4_NRBO_fitrnet_opt(Pred, Resp, max_evals=60, model_config=None):
     Mdl = output['Mdl']
     A1 = _get_param_dict(best_params)
     A1['R2'] = output['R2']
-    A1['R2CV'] = output['R2CV']
     A1['NRBO_evals'] = eval_count
     A1['NRBO_convergence'] = convergence_history
+
+    outer_kf = KFold(n_splits=numFolds, shuffle=True, random_state=42)
+    outer_cv_scores = cross_val_score(Mdl, Pred, Resp, cv=outer_kf, scoring='neg_mean_squared_error')
+    outer_SSE = -outer_cv_scores.sum() * len(Resp) / numFolds
+    outer_SST = np.sum((Resp - np.mean(Resp)) ** 2)
+    outer_R2CV = 1 - (outer_SSE / outer_SST) if outer_SST != 0 else 0
+    A1['R2CV'] = outer_R2CV
+    A1['best_params'] = best_params
+    print(f'  Outer CV R2CV (final report) = {outer_R2CV:.4f}')
 
     return Mdl, A1

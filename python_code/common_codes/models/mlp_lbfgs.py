@@ -42,7 +42,6 @@ def mlp_lbfgs_evaluate(params, XX, YY, cvss):
             alpha=alpha,
             max_iter=300,
             random_state=1,
-            early_stopping=True
         ))
     ])
 

@@ -33,13 +33,24 @@ SAVE_DIR = os.path.join(RESULTS_DIR, 'figures')
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+DEFAULT_MODEL = 'MLP-lbfgs'
+
+def load_results(model_name=DEFAULT_MODEL):
+    path = os.path.join(RESULTS_DIR, 'comprehensive_results.json')
+    if not os.path.exists(path):
+        path = os.path.join(RESULTS_DIR, 'unified_ensemble_results.json')
+        print(f"[WARNING] comprehensive_results.json not found, falling back to {path}")
+    with open(path, 'r') as f:
+        data = json.load(f)
+    if model_name in data:
+        return data[model_name]
+    return data
+
 # ============================================================
 # 图1：各算法R²CV柱状图 - Updated for 6 algorithms
 # ============================================================
-def plot_r2cv_bar():
-    # Read unified results
-    with open(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json'), 'r') as f:
-        results = json.load(f)
+def plot_r2cv_bar(model_name=DEFAULT_MODEL):
+    results = load_results(model_name)
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -52,7 +63,7 @@ def plot_r2cv_bar():
     for i, algo in enumerate(algos):
         values = []
         for ds in datasets:
-            if algo in results[ds]['single_results']:
+            if ds in results and algo in results[ds]['single_results']:
                 values.append(results[ds]['single_results'][algo]['R2CV'])
             else:
                 values.append(0)
@@ -68,25 +79,24 @@ def plot_r2cv_bar():
 
     ax.set_xlabel('Dataset')
     ax.set_ylabel('R²CV')
-    ax.set_title('R²CV Comparison across Datasets (6 Evolutionary Algorithms)')
+    ax.set_title(f'{model_name} - R²CV Comparison across Datasets (6 Evolutionary Algorithms)')
     ax.set_xticks(x + width * 2.5)
     ax.set_xticklabels(datasets)
     ax.legend(loc='upper right', ncol=2)
-    ax.set_ylim(0.6, 1.05)  # y轴从0.6开始，确保AKH的BOA(0.685)可见
+    ax.set_ylim(0.6, 1.05)
     ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig1_r2cv_bar.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig1_r2cv_bar.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig1_r2cv_bar_{model_name}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig1_r2cv_bar_{model_name}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 1: R2CV bar chart saved (6 algorithms)")
+    print(f"[OK] Figure 1: R2CV bar chart saved ({model_name}, 6 algorithms)")
 
 # ============================================================
 # 图2：单算法 vs WeightedAvg集成对比柱状图
 # ============================================================
-def plot_ensemble_gain():
-    with open(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json'), 'r') as f:
-        results = json.load(f)
+def plot_ensemble_gain(model_name=DEFAULT_MODEL):
+    results = load_results(model_name)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
@@ -95,12 +105,17 @@ def plot_ensemble_gain():
 
     for idx, ds in enumerate(datasets):
         ax = axes[idx]
+        if ds not in results:
+            ax.text(0.5, 0.5, f'Data not found for {ds}', ha='center', va='center')
+            continue
 
         # Single algorithm R²CV
         single_r2cv = []
         for algo in algos:
             if algo in results[ds]['single_results']:
                 single_r2cv.append(results[ds]['single_results'][algo]['R2CV'])
+            else:
+                single_r2cv.append(0)
 
         # WeightedAvg R²CV
         wa_result = results[ds]['ensemble_results']['WeightedAvg']
@@ -148,10 +163,10 @@ def plot_ensemble_gain():
             ax.set_ylim(0.94, 1.01)
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig2_ensemble_gain.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig2_ensemble_gain.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig2_ensemble_gain_{model_name}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig2_ensemble_gain_{model_name}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 2: Single vs WeightedAvg comparison saved")
+    print(f"[OK] Figure 2: Single vs WeightedAvg comparison saved ({model_name})")
 
 # ============================================================
 # 图3：收敛曲线（仅Jajpur数据集，DE/SHADE/CMA-ES/Bayesian）
@@ -184,28 +199,30 @@ def plot_convergence():
 # ============================================================
 # 图4：帕累托散点图（从JSON直接生成）
 # ============================================================
-def plot_pareto():
-    with open(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json'), 'r') as f:
-        results = json.load(f)
+def plot_pareto(model_name=DEFAULT_MODEL):
+    results = load_results(model_name)
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
     datasets = ['Jajpur', 'Irish', 'AKH']
-    algos = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite', 'Bayesian']
+    algos = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
     markers = ['o', '^', 's']  # Jajpur, Irish, AKH
 
     for idx, ds in enumerate(datasets):
+        if ds not in results:
+            continue
         for algo in algos:
-            r = results[ds]['single_results'][algo]
-            ax.scatter(r['Time'], r['R2CV'],
-                      s=100, c=COLORS.get(algo, '#95A5A6'),
-                      marker=markers[idx], label=f'{ds}' if algo == 'DE' else '',
-                      zorder=5, alpha=0.85, edgecolors='black', linewidth=0.5)
-            # 标注算法名称（只标Jajpur数据集）
-            if ds == 'Jajpur':
-                ax.annotate(algo, (r['Time'], r['R2CV']),
-                           fontsize=7, ha='center', va='bottom',
-                           xytext=(0, 5), textcoords='offset points')
+            if algo in results[ds]['single_results']:
+                r = results[ds]['single_results'][algo]
+                ax.scatter(r['Time'], r['R2CV'],
+                          s=100, c=COLORS.get(algo, '#95A5A6'),
+                          marker=markers[idx], label=f'{ds}' if algo == 'DE' else '',
+                          zorder=5, alpha=0.85, edgecolors='black', linewidth=0.5)
+                # 标注算法名称（只标Jajpur数据集）
+                if ds == 'Jajpur':
+                    ax.annotate(algo, (r['Time'], r['R2CV']),
+                               fontsize=7, ha='center', va='bottom',
+                               xytext=(0, 5), textcoords='offset points')
 
     # 图例
     from matplotlib.lines import Line2D
@@ -219,39 +236,43 @@ def plot_pareto():
     ax.set_xscale('log')
     ax.set_xlabel('Time (s) - Log Scale')
     ax.set_ylabel('R²CV')
-    ax.set_title('Pareto Chart: Accuracy vs Computational Efficiency')
+    ax.set_title(f'{model_name} - Pareto Chart: Accuracy vs Computational Efficiency')
     ax.grid(True, alpha=0.3, which='both')
     ax.set_ylim(0.6, 1.05)
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig4_pareto.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig4_pareto.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig4_pareto_{model_name}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig4_pareto_{model_name}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 4: Pareto scatter plot saved (from JSON)")
+    print(f"[OK] Figure 4: Pareto scatter plot saved ({model_name})")
 
 # ============================================================
 # 图5：预测vs实际散点图（Jajpur数据集）
 # ============================================================
-def plot_prediction_scatter():
+def plot_prediction_scatter(model_name=DEFAULT_MODEL, dataset='Jajpur'):
+    csv_path = os.path.join(RESULTS_DIR, f'scatter_{model_name}_{dataset}.csv')
     try:
-        df = pd.read_csv(os.path.join(RESULTS_DIR, 'scatter_Jajpur.csv'))
+        df = pd.read_csv(csv_path)
     except FileNotFoundError:
-        print("[SKIP] Figure 5: scatter_Jajpur.csv not found")
-        return
+        csv_path_old = os.path.join(RESULTS_DIR, f'scatter_{dataset}.csv')
+        try:
+            df = pd.read_csv(csv_path_old)
+            print(f"[WARNING] Using old format: {csv_path_old}")
+        except FileNotFoundError:
+            print(f"[SKIP] Figure 5: {csv_path} not found")
+            return
 
     fig, ax = plt.subplots(figsize=(8, 8))
 
-    # 根据数据范围调整轴
-    all_vals = pd.concat([df['Actual'], df['Ensemble_Pred']])
+    all_vals = pd.concat([df['Actual'], df[f'{dataset}_Pred' if f'{dataset}_Pred' in df.columns else 'WeightedAvg_Pred']])
     margin = (all_vals.max() - all_vals.min()) * 0.1
     lo = all_vals.min() - margin
     hi = all_vals.max() + margin
 
-    # 对角线 Y=X（与轴范围一致）
     ax.plot([lo, hi], [lo, hi], 'k--', linewidth=1.5, label='Y=X Reference')
 
-    # 散点
-    ax.scatter(df['Actual'], df['Ensemble_Pred'],
+    pred_col = f'{dataset}_Pred' if f'{dataset}_Pred' in df.columns else 'WeightedAvg_Pred'
+    ax.scatter(df['Actual'], df[pred_col],
                s=30, c='#3498DB', alpha=0.6, edgecolors='black', linewidth=0.3)
 
     ax.set_xlim(lo, hi)
@@ -259,24 +280,25 @@ def plot_prediction_scatter():
 
     ax.set_xlabel('Actual WQI')
     ax.set_ylabel('Predicted WQI')
-    ax.set_title('Prediction vs Actual (Jajpur Dataset, 74 samples)')
+    ax.set_title(f'{model_name} - Prediction vs Actual ({dataset} Dataset, {len(df)} samples)')
     ax.legend(loc='upper left')
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig5_prediction_scatter.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig5_prediction_scatter.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig5_prediction_scatter_{model_name}_{dataset}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig5_prediction_scatter_{model_name}_{dataset}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 5: Prediction scatter plot saved (Jajpur)")
+    print(f"[OK] Figure 5: Prediction scatter plot saved ({model_name}, {dataset})")
 
 # ============================================================
 # 图6：算法分歧度热图（Jajpur数据集）
 # ============================================================
-def plot_correlation_heatmap():
+def plot_correlation_heatmap(model_name=DEFAULT_MODEL, dataset='Jajpur'):
+    csv_path = os.path.join(RESULTS_DIR, f'correlation_matrix_{dataset}.csv')
     try:
-        df = pd.read_csv(os.path.join(RESULTS_DIR, 'correlation_matrix_Jajpur.csv'), index_col=0)
+        df = pd.read_csv(csv_path, index_col=0)
     except FileNotFoundError:
-        print("[SKIP] Figure 6: correlation_matrix_Jajpur.csv not found")
+        print(f"[SKIP] Figure 6: {csv_path} not found")
         return
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -286,29 +308,29 @@ def plot_correlation_heatmap():
                 square=True, linewidths=0.5,
                 cbar_kws={'label': 'Pearson Correlation'})
 
-    ax.set_title('Algorithm Divergence on Jajpur Dataset (Correlation Matrix)')
+    ax.set_title(f'{model_name} - Algorithm Divergence on {dataset} Dataset (Correlation Matrix)')
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig6_correlation_heatmap.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig6_correlation_heatmap.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig6_correlation_heatmap_{model_name}_{dataset}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig6_correlation_heatmap_{model_name}_{dataset}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 6: Correlation heatmap saved (Jajpur)")
+    print(f"[OK] Figure 6: Correlation heatmap saved ({model_name}, {dataset})")
 
 # ============================================================
 # 图7：WeightedAvg权重柱状图 - Updated for 6 algorithms
 # ============================================================
-def plot_weights_distribution():
-    # Read unified results
-    with open(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json'), 'r') as f:
-        results = json.load(f)
+def plot_weights_distribution(model_name=DEFAULT_MODEL):
+    results = load_results(model_name)
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
     datasets = ['Jajpur', 'Irish', 'AKH']
     algos = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
 
-    # Calculate weights based on R²CV
     weights_data = {}
     for ds in datasets:
+        if ds not in results:
+            weights_data[ds] = {a: 1/6 for a in algos}
+            continue
         total_r2cv = sum([results[ds]['single_results'][algo]['R2CV'] for algo in algos])
         weights_data[ds] = {}
         for algo in algos:
@@ -331,7 +353,7 @@ def plot_weights_distribution():
 
     ax.set_xlabel('Dataset')
     ax.set_ylabel('Weight')
-    ax.set_title('WeightedAvg Weight Distribution (6 Algorithms)')
+    ax.set_title(f'{model_name} - WeightedAvg Weight Distribution (6 Algorithms)')
     ax.set_xticks(x + width * 2.5)
     ax.set_xticklabels(datasets)
     ax.legend(loc='upper right', ncol=2)
@@ -343,10 +365,10 @@ def plot_weights_distribution():
                label='Equal Weight (0.167)')
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig7_weights_distribution.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig7_weights_distribution.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig7_weights_distribution_{model_name}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig7_weights_distribution_{model_name}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 7: Weight distribution bar chart saved (6 algorithms)")
+    print(f"[OK] Figure 7: Weight distribution bar chart saved ({model_name})")
 
 
 # ============================================================
@@ -384,9 +406,8 @@ def plot_correlation_heatmaps():
 # ============================================================
 # 图9：MAE对比箱线图（单算法 vs 集成） - Updated for 6 algorithms
 # ============================================================
-def plot_mae_boxplot():
-    with open(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json'), 'r') as f:
-        results = json.load(f)
+def plot_mae_boxplot(model_name=DEFAULT_MODEL):
+    results = load_results(model_name)
 
     datasets = ['Jajpur', 'Irish', 'AKH']
     algos = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
@@ -395,6 +416,9 @@ def plot_mae_boxplot():
 
     for idx, ds in enumerate(datasets):
         ax = axes[idx]
+        if ds not in results:
+            ax.text(0.5, 0.5, f'Data not found for {ds}', ha='center', va='center')
+            continue
 
         # Single algorithm MAE
         single_mae = []
@@ -402,6 +426,8 @@ def plot_mae_boxplot():
             if algo in results[ds]['single_results']:
                 v = results[ds]['single_results'][algo]
                 single_mae.append(v['MAE'] if 'MAE' in v else 0)
+            else:
+                single_mae.append(0)
 
         # WeightedAvg MAE
         wa = results[ds]['ensemble_results']['WeightedAvg']
@@ -429,10 +455,10 @@ def plot_mae_boxplot():
         ax.grid(True, alpha=0.3, axis='y')
 
     plt.tight_layout()
-    fig.savefig(os.path.join(SAVE_DIR, 'fig9_mae_boxplot.png'), bbox_inches='tight')
-    fig.savefig(os.path.join(SAVE_DIR, 'fig9_mae_boxplot.pdf'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig9_mae_boxplot_{model_name}.png'), bbox_inches='tight')
+    fig.savefig(os.path.join(SAVE_DIR, f'fig9_mae_boxplot_{model_name}.pdf'), bbox_inches='tight')
     plt.close()
-    print("[OK] Figure 9: MAE boxplot saved (6 single vs WeightedAvg)")
+    print(f"[OK] Figure 9: MAE boxplot saved ({model_name})")
 
 
 # ============================================================
@@ -448,21 +474,23 @@ def plot_ablation():
 # 主函数：生成所有图
 # ============================================================
 if __name__ == '__main__':
+    import sys
+    model_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_MODEL
+
     print("=" * 50)
-    print("Generating 7+ figures for paper...")
+    print(f"Generating figures for paper (Model: {model_name})...")
     print("=" * 50)
 
-    plot_r2cv_bar()
-    plot_ensemble_gain()
+    plot_r2cv_bar(model_name)
+    plot_ensemble_gain(model_name)
     # plot_convergence()  # 已跳过：收敛曲线需额外运行实验
-    plot_pareto()
-    plot_prediction_scatter()
-    plot_correlation_heatmap()  # AKH only
-    plot_weights_distribution()
+    plot_pareto(model_name)
+    plot_prediction_scatter(model_name)
+    plot_correlation_heatmap(model_name)
+    plot_weights_distribution(model_name)
 
-    # New figures
     plot_correlation_heatmaps()  # All 4 datasets
-    plot_mae_boxplot()           # MAE comparison
+    plot_mae_boxplot(model_name)
 
     print("=" * 50)
     print(f"[DONE] All figures saved to: {SAVE_DIR}")

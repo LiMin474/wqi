@@ -198,12 +198,30 @@ def save_correlation_csv(model_name, dataset_name, predictions_dict, algos):
 # ==================== 主函数 ====================
 
 def main():
-    print('=' * 70)
-    print('综合实验: 3模型 × 6EA × 3集成方法 × 3数据集')
-    print('=' * 70)
+    import sys
 
-    # 模型列表（按顺序跑）
-    model_names = ['MLP-lbfgs', '1D-CNN', 'XGBoost']
+    all_models = ['MLP-lbfgs', '1D-CNN', 'XGBoost']
+    try:
+        import torch
+        all_models.append('1D-CNN-PT')
+        print(f'  [INFO] PyTorch 可用，添加模型: 1D-CNN-PT')
+    except ImportError:
+        pass
+
+    if len(sys.argv) > 1:
+        model_names = sys.argv[1:]
+        invalid = [m for m in model_names if m not in all_models]
+        if invalid:
+            print(f"错误: 无效的模型名称: {', '.join(invalid)}")
+            print(f"可用模型: {', '.join(all_models)}")
+            return
+    else:
+        model_names = all_models
+
+    print('=' * 70)
+    print(f'综合实验: {len(model_names)}模型 × 6EA × 3集成方法 × 3数据集')
+    print(f'模型: {", ".join(model_names)}')
+    print('=' * 70)
 
     datasets = {
         'Jajpur': '1_jajpur.npz',
@@ -285,7 +303,7 @@ def main():
             # --- Stacking: 5折CV内正确计算所有集成方法的R2CV ---
             print('  Running Stacking (corrected R2CV for all methods)...', flush=True)
             try:
-                Mdl_stack, A1_stack = a4_ensemble_stacking(X, y, model_config=model_config)
+                Mdl_stack, A1_stack = a4_ensemble_stacking(X, y, model_config=model_config, max_evals=config['DE'])
                 y_stack = Mdl_stack.predict(X)
                 R2_st, RMSE_st, MAE_st = calc_metrics(y, y_stack)
 
@@ -358,8 +376,22 @@ def main():
                   f"{r['best_single_r2cv']:>8.4f} {r['best_ensemble_method']:<14} "
                   f"{r['best_ensemble_r2cv']:>8.4f} {r['improvement_pp']:>7.2f}pp")
 
-    # ========== 保存JSON ==========
+    # ========== 保存JSON (合并已有结果) ==========
     json_path = os.path.join(RESULTS_DIR, 'comprehensive_results.json')
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                existing_results = json.load(f)
+            for model_name in model_names:
+                if model_name in existing_results:
+                    existing_results[model_name].update(all_results[model_name])
+                else:
+                    existing_results[model_name] = all_results[model_name]
+            all_results = existing_results
+            print(f"  [MERGE] 合并了已有结果文件")
+        except Exception as e:
+            print(f"  [WARN] 合并已有结果失败，将覆盖: {e}")
+    
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(all_results, f, indent=2, ensure_ascii=False)
     print(f"\nDone. JSON: {json_path}")

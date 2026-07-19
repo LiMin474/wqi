@@ -5,12 +5,20 @@
 """
 import numpy as np
 import os
+from sklearn.base import BaseEstimator, TransformerMixin
 
 # 抑制 TensorFlow 烦人警告
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-# 延迟导入，避免强制依赖
+class Reshape1D(BaseEstimator, TransformerMixin):
+    """将 2D 特征矩阵转换为 3D (n_samples, n_features, 1)，适配 Conv1D 输入"""
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X):
+        return np.expand_dims(X, axis=-1)
+
+
 _CNN_IMPORTED = False
 
 
@@ -22,6 +30,8 @@ def _ensure_imports():
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
+            import tensorflow as tf
+            tf.random.set_seed(1)
             from tensorflow.keras.models import Sequential
             from tensorflow.keras.layers import Conv1D, GlobalAveragePooling1D, Dense, Dropout
             from tensorflow.keras.optimizers import Adam
@@ -65,6 +75,7 @@ def cnn_1d_evaluate(params, XX, YY, cvss):
 
     Mdl = Pipeline([
         ('scaler', StandardScaler()),
+        ('reshape', Reshape1D()),
         ('cnn', KerasRegressor(
             model=build_fn,
             batch_size=batch_size,

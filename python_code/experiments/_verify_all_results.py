@@ -19,7 +19,6 @@ import os
 import sys
 import io
 
-# Force UTF-8 output to avoid GBK encoding issues
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,7 +36,6 @@ DATASET_MAP = {
 EA_NAMES = ['DE', 'SHADE', 'CMA-ES', 'NRBO', 'BOA', 'HHO-Lite']
 ALL_ALGO_NAMES = EA_NAMES + ['Bayesian']
 
-# Expected values from task description
 EXPECTED = {
     'Jajpur': {'samples': 74, 'features': 12, 'r2cv_min': 0.9865, 'r2cv_max': 0.9921, 'ensemble_r2cv': 0.9998},
     'Irish':  {'samples': 501, 'features': 11, 'r2cv_min': 0.9546, 'r2cv_max': 0.9590, 'ensemble_r2cv': 0.9856},
@@ -47,6 +45,19 @@ EXPECTED = {
 passed = 0
 failed = 0
 total_checks = 0
+
+
+def load_results(model_name='MLP-lbfgs'):
+    path = os.path.join(RESULTS_DIR, 'comprehensive_results.json')
+    if not os.path.exists(path):
+        path = os.path.join(RESULTS_DIR, 'unified_ensemble_results.json')
+        print(f"[WARNING] comprehensive_results.json not found, falling back to {path}")
+    with open(path) as f:
+        data = json.load(f)
+    if model_name in data:
+        return data[model_name]
+    return data
+
 
 def check(name, condition, detail=''):
     global passed, failed, total_checks
@@ -59,12 +70,13 @@ def check(name, condition, detail=''):
     symbol = '[OK]' if condition else '[!!]'
     print(f'  {symbol} {status} | {name}' + (f' | {detail}' if detail else ''))
 
+
 def print_separator(title):
     print(f'\n{"=" * 70}')
     print(f'  {title}')
     print(f'{"=" * 70}')
 
-# ==================== 1. Dataset Integrity ====================
+
 print_separator('1. Dataset Integrity - dataset integrity check')
 
 dataset_stats = {}
@@ -106,86 +118,79 @@ for ds_name, file_name in DATASET_MAP.items():
     except Exception as e:
         check(f'{ds_name}: load failed', False, str(e))
 
-# ==================== 2. Results JSON ====================
 print_separator('2. Results JSON - metrics check')
 
-json_path = os.path.join(RESULTS_DIR, 'unified_ensemble_results.json')
-check('JSON file exists', os.path.isfile(json_path))
+model_name = sys.argv[1] if len(sys.argv) > 1 else 'MLP-lbfgs'
+all_data = load_results(model_name)
+json_path = os.path.join(RESULTS_DIR, 'comprehensive_results.json')
+check('JSON file exists', os.path.isfile(json_path) or os.path.isfile(os.path.join(RESULTS_DIR, 'unified_ensemble_results.json')))
 
-if os.path.isfile(json_path):
-    with open(json_path) as f:
-        all_data = json.load(f)
+datasets_in_json = list(all_data.keys())
+print(f'  Datasets in JSON: {datasets_in_json}')
 
-    datasets_in_json = list(all_data.keys())
-    print(f'  Datasets in JSON: {datasets_in_json}')
+for ds_name in DATASET_MAP:
+    if ds_name not in all_data:
+        check(f'{ds_name}: present in JSON', False, 'MISSING')
+        continue
 
-    for ds_name in DATASET_MAP:
-        if ds_name not in all_data:
-            check(f'{ds_name}: present in JSON', False, 'MISSING')
-            continue
+    d = all_data[ds_name]
+    single = d.get('single_results', {})
+    ensemble = d.get('ensemble_results', {})
 
-        d = all_data[ds_name]
-        single = d.get('single_results', {})
-        ensemble = d.get('ensemble_results', {})
+    print(f'\n--- {ds_name} single algorithm metrics ---')
+    print(f'  {"Algo":<10} {"R2":>8} {"R2CV":>8} {"RMSE":>10} {"MAE":>10} {"Time(s)":>8}')
+    print(f'  {"-"*54}')
+    for a in ALL_ALGO_NAMES:
+        if a in single:
+            r = single[a]
+            print(f'  {a:<10} {r["R2"]:>8.4f} {r["R2CV"]:>8.4f} {r["RMSE"]:>10.3f} {r["MAE"]:>10.3f} {r["Time"]:>8.1f}')
 
-        # Single algorithm metrics
-        print(f'\n--- {ds_name} single algorithm metrics ---')
-        print(f'  {"Algo":<10} {"R2":>8} {"R2CV":>8} {"RMSE":>10} {"MAE":>10} {"Time(s)":>8}')
-        print(f'  {"-"*54}')
-        for a in ALL_ALGO_NAMES:
-            if a in single:
-                r = single[a]
-                print(f'  {a:<10} {r["R2"]:>8.4f} {r["R2CV"]:>8.4f} {r["RMSE"]:>10.3f} {r["MAE"]:>10.3f} {r["Time"]:>8.1f}')
+    for algo in EA_NAMES:
+        check(f'{ds_name}/{algo}: R2 exists', algo in single and 'R2' in single[algo])
+        check(f'{ds_name}/{algo}: R2CV exists', algo in single and 'R2CV' in single[algo])
+        if algo in single and 'R2CV' in single[algo]:
+            r2cv = single[algo]['R2CV']
+            check(f'{ds_name}/{algo}: 0<=R2CV<=1', 0 <= r2cv <= 1, f'R2CV={r2cv:.4f}')
+        if algo in single and 'RMSE' in single[algo]:
+            check(f'{ds_name}/{algo}: RMSE>0', single[algo]['RMSE'] > 0)
+        if algo in single and 'MAE' in single[algo]:
+            check(f'{ds_name}/{algo}: MAE>0', single[algo]['MAE'] > 0)
 
-        # Metric existence
-        for algo in EA_NAMES:
-            check(f'{ds_name}/{algo}: R2 exists', algo in single and 'R2' in single[algo])
-            check(f'{ds_name}/{algo}: R2CV exists', algo in single and 'R2CV' in single[algo])
-            if algo in single and 'R2CV' in single[algo]:
-                r2cv = single[algo]['R2CV']
-                check(f'{ds_name}/{algo}: 0<=R2CV<=1', 0 <= r2cv <= 1, f'R2CV={r2cv:.4f}')
-            if algo in single and 'RMSE' in single[algo]:
-                check(f'{ds_name}/{algo}: RMSE>0', single[algo]['RMSE'] > 0)
-            if algo in single and 'MAE' in single[algo]:
-                check(f'{ds_name}/{algo}: MAE>0', single[algo]['MAE'] > 0)
+    wa = ensemble.get('WeightedAvg', {})
+    if wa:
+        check(f'{ds_name}/Ensemble: R2CV exists', 'R2CV' in wa)
+        if 'R2CV' in wa:
+            check(f'{ds_name}/Ensemble: 0<=R2CV<=1', 0 <= wa['R2CV'] <= 1, f'R2CV={wa["R2CV"]:.4f}')
+        if 'R2' in wa:
+            check(f'{ds_name}/Ensemble: R2 reasonable', 0 <= wa['R2'] <= 1)
+        if 'RMSE' in wa:
+            check(f'{ds_name}/Ensemble: RMSE>0', wa['RMSE'] > 0)
+        if 'MAE' in wa:
+            check(f'{ds_name}/Ensemble: MAE>0', wa['MAE'] > 0)
 
-        # Ensemble metrics
-        wa = ensemble.get('WeightedAvg', {})
-        if wa:
-            check(f'{ds_name}/Ensemble: R2CV exists', 'R2CV' in wa)
-            if 'R2CV' in wa:
-                check(f'{ds_name}/Ensemble: 0<=R2CV<=1', 0 <= wa['R2CV'] <= 1, f'R2CV={wa["R2CV"]:.4f}')
-            if 'R2' in wa:
-                check(f'{ds_name}/Ensemble: R2 reasonable', 0 <= wa['R2'] <= 1)
-            if 'RMSE' in wa:
-                check(f'{ds_name}/Ensemble: RMSE>0', wa['RMSE'] > 0)
-            if 'MAE' in wa:
-                check(f'{ds_name}/Ensemble: MAE>0', wa['MAE'] > 0)
+        best_single = max(single[a]['R2CV'] for a in EA_NAMES if a in single)
+        check(f'{ds_name}: Ensemble R2CV > best single', wa['R2CV'] >= best_single,
+              f'Ens={wa["R2CV"]:.4f} vs Best={best_single:.4f}')
 
-            # Ensemble R2CV should be > best single R2CV
-            best_single = max(single[a]['R2CV'] for a in EA_NAMES if a in single)
-            check(f'{ds_name}: Ensemble R2CV > best single', wa['R2CV'] >= best_single,
-                  f'Ens={wa["R2CV"]:.4f} vs Best={best_single:.4f}')
+    exp = EXPECTED[ds_name]
+    r2cvs = [single[a]['R2CV'] for a in EA_NAMES if a in single]
+    if r2cvs:
+        actual_min, actual_max = min(r2cvs), max(r2cvs)
+        check(f'{ds_name}: R2CV range [{exp["r2cv_min"]}~{exp["r2cv_max"]}]',
+              exp['r2cv_min'] <= actual_min and actual_max <= exp['r2cv_max'],
+              f'actual=[{actual_min:.4f}~{actual_max:.4f}]')
+    if wa and 'R2CV' in wa:
+        tol = 0.002
+        check(f'{ds_name}: Ensemble R2CV ~ {exp["ensemble_r2cv"]}',
+              abs(wa['R2CV'] - exp['ensemble_r2cv']) < tol,
+              f'actual={wa["R2CV"]:.4f}, expected={exp["ensemble_r2cv"]:.4f}')
 
-        # Specific expected value checks
-        exp = EXPECTED[ds_name]
-        r2cvs = [single[a]['R2CV'] for a in EA_NAMES if a in single]
-        if r2cvs:
-            actual_min, actual_max = min(r2cvs), max(r2cvs)
-            check(f'{ds_name}: R2CV range [{exp["r2cv_min"]}~{exp["r2cv_max"]}]',
-                  exp['r2cv_min'] <= actual_min and actual_max <= exp['r2cv_max'],
-                  f'actual=[{actual_min:.4f}~{actual_max:.4f}]')
-        if wa and 'R2CV' in wa:
-            tol = 0.002  # 0.2% tolerance
-            check(f'{ds_name}: Ensemble R2CV ~ {exp["ensemble_r2cv"]}',
-                  abs(wa['R2CV'] - exp['ensemble_r2cv']) < tol,
-                  f'actual={wa["R2CV"]:.4f}, expected={exp["ensemble_r2cv"]:.4f}')
-
-# ==================== 3. Convergence CSV ====================
 print_separator('3. Convergence CSV - convergence curve check')
 
 for ds_name in DATASET_MAP:
-    csv_path = os.path.join(RESULTS_DIR, f'convergence_{ds_name}.csv')
+    csv_path = os.path.join(RESULTS_DIR, f'convergence_{model_name}_{ds_name}.csv')
+    if not os.path.isfile(csv_path):
+        csv_path = os.path.join(RESULTS_DIR, f'convergence_{ds_name}.csv')
     check(f'{ds_name}: convergence CSV exists', os.path.isfile(csv_path))
     if not os.path.isfile(csv_path):
         continue
@@ -193,7 +198,7 @@ for ds_name in DATASET_MAP:
     with open(csv_path) as f:
         reader = csv.reader(f)
         header = next(reader)
-        cols = header[1:]  # skip Generation
+        cols = header[1:]
 
         generations = []
         algo_series = {a: [] for a in cols}
@@ -206,7 +211,6 @@ for ds_name in DATASET_MAP:
     n_gen = len(generations)
     print(f'  {ds_name}: {n_gen} generations, {len(cols)} algorithms')
 
-    # Check if any columns are identical (homogeneous)
     for i, a1 in enumerate(cols):
         for j, a2 in enumerate(cols):
             if i < j and algo_series[a1] == algo_series[a2]:
@@ -214,7 +218,6 @@ for ds_name in DATASET_MAP:
                 check(f'{ds_name}: {a1}!={a2} (not homogeneous)', n_identical < n_gen,
                       f'{n_identical}/{n_gen} identical')
 
-    # Check each algorithm for progressive improvement (allows plateaus, no regression)
     for a in cols:
         series = algo_series[a]
         best_so_far = -float('inf')
@@ -225,7 +228,6 @@ for ds_name in DATASET_MAP:
             best_so_far = max(best_so_far, val)
         check(f'{ds_name}/{a}: convergence no regression', regressions == 0, f'regressions={regressions}')
 
-        # Check first-to-last improvement
         if len(series) >= 2:
             final_is_best = abs(max(series) - series[-1]) < 1e-10
             check(f'{ds_name}/{a}: final=best value', final_is_best,
@@ -235,11 +237,12 @@ for ds_name in DATASET_MAP:
             check(f'{ds_name}/{a}: has improvement ({series[0]:.4f}->{series[-1]:.4f})',
                   improvement, f'first={series[0]:.4f} last={series[-1]:.4f}')
 
-# ==================== 4. Scatter CSV ====================
 print_separator('4. Scatter CSV - prediction vs actual correlation check')
 
 for ds_name in DATASET_MAP:
-    csv_path = os.path.join(RESULTS_DIR, f'scatter_{ds_name}.csv')
+    csv_path = os.path.join(RESULTS_DIR, f'scatter_{model_name}_{ds_name}.csv')
+    if not os.path.isfile(csv_path):
+        csv_path = os.path.join(RESULTS_DIR, f'scatter_{ds_name}.csv')
     check(f'{ds_name}: scatter CSV exists', os.path.isfile(csv_path))
     if not os.path.isfile(csv_path):
         continue
@@ -252,15 +255,14 @@ for ds_name in DATASET_MAP:
 
     n_rows = len(df_data)
     actual = np.array([float(r['Actual']) for r in df_data])
-    ensemble_pred = np.array([float(r['WeightedAvg_Pred']) for r in df_data])
+    pred_col = 'WeightedAvg_Pred' if 'WeightedAvg_Pred' in df_data[0] else (ds_name + '_Pred') if (ds_name + '_Pred') in df_data[0] else 'Ensemble_Pred'
+    ensemble_pred = np.array([float(r[pred_col]) for r in df_data])
 
     print(f'  {ds_name}: {n_rows} samples')
 
-    # Ensemble prediction vs actual correlation
     r_ens = np.corrcoef(actual, ensemble_pred)[0, 1]
     check(f'{ds_name}: Ens vs Actual Pearson r>0.8', r_ens > 0.8, f'r={r_ens:.4f}')
 
-    # Each algorithm's prediction vs actual correlation
     for a in EA_NAMES:
         if a not in df_data[0]:
             continue
@@ -268,7 +270,6 @@ for ds_name in DATASET_MAP:
         r_a = np.corrcoef(actual, pred_a)[0, 1]
         check(f'{ds_name}/{a}: Pearson r>0.5', r_a > 0.5, f'r={r_a:.4f}')
 
-    # Ensemble should correlate at least as well as best single algo
     best_algo_r = max(
         np.corrcoef(actual, np.array([float(r[a]) for r in df_data]))[0, 1]
         for a in EA_NAMES if a in df_data[0]
@@ -276,7 +277,6 @@ for ds_name in DATASET_MAP:
     check(f'{ds_name}: Ens r >= Best algo r * 0.95', r_ens >= best_algo_r * 0.95,
           f'Ens r={r_ens:.4f}, Best r={best_algo_r:.4f}')
 
-    # IsDifficult column exists
     has_difficult = 'IsDifficult' in df_data[0]
     check(f'{ds_name}: IsDifficult column exists', has_difficult)
     if has_difficult:
@@ -284,17 +284,17 @@ for ds_name in DATASET_MAP:
         check(f'{ds_name}: has difficult samples', n_difficult > 0,
               f'{n_difficult}/{n_rows} difficult samples')
 
-    # Ensemble MAE reasonable
     mae = np.mean(np.abs(actual - ensemble_pred))
     std_actual = np.std(actual)
     check(f'{ds_name}: Ens MAE reasonable (<0.5*std)', mae < 0.5 * std_actual,
           f'MAE={mae:.4f}, std(y)={std_actual:.4f}')
 
-# ==================== 5. Weight CSV ====================
 print_separator('5. Weight CSV - weight check')
 
 for ds_name in DATASET_MAP:
-    csv_path = os.path.join(RESULTS_DIR, f'weights_{ds_name}.csv')
+    csv_path = os.path.join(RESULTS_DIR, f'weights_{model_name}_{ds_name}.csv')
+    if not os.path.isfile(csv_path):
+        csv_path = os.path.join(RESULTS_DIR, f'weights_{ds_name}.csv')
     check(f'{ds_name}: weights CSV exists', os.path.isfile(csv_path))
     if not os.path.isfile(csv_path):
         continue
@@ -314,7 +314,6 @@ for ds_name in DATASET_MAP:
 
     print(f'  {ds_name}: weights = {[f"{w:.6f}" for w in weights]}')
 
-# ==================== 6. Correlation Matrix CSV ====================
 print_separator('6. Correlation Matrix CSV - correlation matrix check')
 
 for ds_name in DATASET_MAP:
@@ -326,7 +325,7 @@ for ds_name in DATASET_MAP:
     with open(csv_path) as f:
         reader = csv.reader(f)
         header = next(reader)
-        algo_names = header[1:]  # first cell is empty
+        algo_names = header[1:]
 
         matrix = []
         for row in reader:
@@ -342,22 +341,15 @@ for ds_name in DATASET_MAP:
     check(f'{ds_name}: off-diagonal != 1.0', np.all(off_diag < 0.999999),
           'some algos perfectly correlated')
 
-# ==================== Summary ====================
 print_separator('Verification Summary')
 
-# Check for missing datasets in JSON
-if os.path.isfile(json_path):
-    with open(json_path) as f:
-        all_data = json.load(f)
-    datasets_in_json = list(all_data.keys())
-else:
-    datasets_in_json = []
+datasets_in_json = list(all_data.keys())
 missing_datasets = [ds for ds in DATASET_MAP if ds not in datasets_in_json]
 if missing_datasets:
     print(f'\n[WARN] Missing datasets in JSON: {", ".join(missing_datasets)}')
     print(f'   JSON only has: {datasets_in_json}')
     print(f'   Expected all three (Jajpur, Irish, AKH)')
-    print(f'   Need to re-run _run_unified_ensemble.py for missing datasets')
+    print(f'   Need to re-run _run_comprehensive.py for missing datasets')
 
 print(f'\nTotal checks: {total_checks}')
 print(f'Passed: {passed}')

@@ -23,8 +23,6 @@ def SumSqr(params, XX, YY, cvss):
 
     act_map = {'tanh': 'tanh', 'sigmoid': 'logistic', 'relu': 'relu'}
 
-    # Create pipeline with standardization (matching MATLAB's 'Standardize',1)
-    # Use 'lbfgs' solver matching MATLAB fitrnet's default for small datasets
     Mdl = Pipeline([
         ('scaler', StandardScaler()),
         ('mlp', MLPRegressor(
@@ -34,7 +32,6 @@ def SumSqr(params, XX, YY, cvss):
             alpha=alpha,
             max_iter=300,
             random_state=1,
-            early_stopping=True
         ))
     ])
 
@@ -108,8 +105,15 @@ def a4_Bayesian_fitrnet_opt(Pred, Resp, max_evals=60):
         'Activation': best_params[3],
         'Alpha': float(best_params[4]),
         'R2': output['R2'],
-        'R2CV': output['R2CV'],
         'Bayesian_convergence': bayes_best_so_far.tolist()
     }
+
+    outer_kf = KFold(n_splits=numFolds, shuffle=True, random_state=42)
+    outer_cv_scores = cross_val_score(Mdl, Pred, Resp, cv=outer_kf, scoring='neg_mean_squared_error')
+    outer_SSE = -outer_cv_scores.sum() * len(Resp) / numFolds
+    outer_SST = np.sum((Resp - np.mean(Resp)) ** 2)
+    outer_R2CV = 1 - (outer_SSE / outer_SST) if outer_SST != 0 else 0
+    A1['R2CV'] = outer_R2CV
+    print(f'  Outer CV R2CV (final report) = {outer_R2CV:.4f}')
 
     return Mdl, A1
