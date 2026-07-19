@@ -36,7 +36,7 @@ from common_codes.optimizers.NRBO import a4_NRBO_fitrnet_opt
 from common_codes.optimizers.BOA import a4_BOA_fitrnet_opt
 from common_codes.optimizers.HHO_Lite import a4_HHO_Lite_fitrnet_opt
 from common_codes.ensemble.stacking import a4_ensemble_stacking
-from sklearn.model_selection import KFold
+
 
 
 # ==================== 工具函数 ====================
@@ -276,48 +276,35 @@ def main():
 
             ensemble_results = {}
 
-            # --- SimpleAvg ---
+            # --- Full-data R2 for SimpleAvg/WeightedAvg (用于CSV输出) ---
             y_simple = simple_avg(predictions)
             R2_s, RMSE_s, MAE_s = calc_metrics(y, y_simple)
-            kf = KFold(n_splits=5, shuffle=True, random_state=1)
-            r2cv_s_list = []
-            for train_idx, test_idx in kf.split(X):
-                X_train, X_test = X[train_idx], X[test_idx]
-                y_train, y_test = y[train_idx], y[test_idx]
-                preds_test = np.array([m.predict(X_test) for m in models])
-                y_pred_s_test = simple_avg(preds_test)
-                R2CV_s_fold, _, _ = calc_metrics(y_test, y_pred_s_test)
-                r2cv_s_list.append(R2CV_s_fold)
-            R2CV_s = np.mean(r2cv_s_list)
-            ensemble_results['SimpleAvg'] = {'R2': R2_s, 'R2CV': R2CV_s, 'RMSE': RMSE_s, 'MAE': MAE_s}
-            print(f"  SimpleAvg:     R2={R2_s:.4f}  R2CV={R2CV_s:.4f}  RMSE={RMSE_s:.3f}  MAE={MAE_s:.3f}")
-
-            # --- WeightedAvg ---
             y_weighted, weights = weighted_avg(predictions, r2cv_scores)
             R2_w, RMSE_w, MAE_w = calc_metrics(y, y_weighted)
-            r2cv_w_list = []
-            for train_idx, test_idx in kf.split(X):
-                X_train, X_test = X[train_idx], X[test_idx]
-                y_train, y_test = y[train_idx], y[test_idx]
-                preds_test = np.array([m.predict(X_test) for m in models])
-                y_pred_w_test, _ = weighted_avg(preds_test, r2cv_scores)
-                R2CV_w_fold, _, _ = calc_metrics(y_test, y_pred_w_test)
-                r2cv_w_list.append(R2CV_w_fold)
-            R2CV_w = np.mean(r2cv_w_list)
-            ensemble_results['WeightedAvg'] = {'R2': R2_w, 'R2CV': R2CV_w, 'RMSE': RMSE_w, 'MAE': MAE_w}
-            print(f"  WeightedAvg:   R2={R2_w:.4f}  R2CV={R2CV_w:.4f}  RMSE={RMSE_w:.3f}  MAE={MAE_w:.3f}")
 
-            # --- Stacking ---
-            print('  Running Stacking...', flush=True)
+            # --- Stacking: 5折CV内正确计算所有集成方法的R2CV ---
+            print('  Running Stacking (corrected R2CV for all methods)...', flush=True)
             try:
                 Mdl_stack, A1_stack = a4_ensemble_stacking(X, y, model_config=model_config)
                 y_stack = Mdl_stack.predict(X)
                 R2_st, RMSE_st, MAE_st = calc_metrics(y, y_stack)
-                R2CV_st = A1_stack['R2CV']
+
+                # 使用 stacking 内部 CV 修正后的 R2CV
+                R2CV_s = A1_stack['SA_R2CV']   # 修正后的 SimpleAvg R2CV
+                R2CV_w = A1_stack['WA_R2CV']   # 修正后的 WeightedAvg R2CV
+                R2CV_st = A1_stack['R2CV']     # Stacking R2CV
+
+                ensemble_results['SimpleAvg'] = {'R2': R2_s, 'R2CV': R2CV_s, 'RMSE': RMSE_s, 'MAE': MAE_s}
+                ensemble_results['WeightedAvg'] = {'R2': R2_w, 'R2CV': R2CV_w, 'RMSE': RMSE_w, 'MAE': MAE_w}
                 ensemble_results['Stacking'] = {'R2': R2_st, 'R2CV': R2CV_st, 'RMSE': RMSE_st, 'MAE': MAE_st}
+
+                print(f"  SimpleAvg:     R2={R2_s:.4f}  R2CV={R2CV_s:.4f}  RMSE={RMSE_s:.3f}  MAE={MAE_s:.3f}")
+                print(f"  WeightedAvg:   R2={R2_w:.4f}  R2CV={R2CV_w:.4f}  RMSE={RMSE_w:.3f}  MAE={MAE_w:.3f}")
                 print(f"  Stacking:      R2={R2_st:.4f}  R2CV={R2CV_st:.4f}  RMSE={RMSE_st:.3f}  MAE={MAE_st:.3f}")
             except Exception as e:
                 print(f"  Stacking FAILED: {e}")
+                ensemble_results['SimpleAvg'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
+                ensemble_results['WeightedAvg'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
                 ensemble_results['Stacking'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
 
             # ========== 保存CSV ==========
