@@ -35,7 +35,6 @@ from common_codes.optimizers.CMAES import a4_CMAES_fitrnet_opt
 from common_codes.optimizers.NRBO import a4_NRBO_fitrnet_opt
 from common_codes.optimizers.BOA import a4_BOA_fitrnet_opt
 from common_codes.optimizers.HHO_Lite import a4_HHO_Lite_fitrnet_opt
-from common_codes.ensemble.stacking import a4_ensemble_stacking
 from common_codes.ensemble.unified_evaluation import unified_outer_cv_evaluation
 
 
@@ -295,15 +294,7 @@ def main():
             predictions = np.array([m.predict(X) for m in models])
 
             r2cv_scores = [unified_results[a]['R2CV'] for a in ea_names]
-            y_simple = simple_avg(predictions)
             y_weighted, weights = weighted_avg(predictions, r2cv_scores)
-
-            try:
-                Mdl_stack, A1_stack = a4_ensemble_stacking(X, y, model_config=model_config, max_evals=config['DE'])
-                y_stack = Mdl_stack.predict(X)
-            except Exception as e:
-                print(f"  [WARN] Full-data stacking training failed: {e}")
-                y_stack = y_weighted
 
             # ========== 保存CSV ==========
             save_scatter_csv(model_name, dataset_name, y, pred_dict, y_weighted, 'WeightedAvg')
