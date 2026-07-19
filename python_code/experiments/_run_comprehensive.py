@@ -36,6 +36,7 @@ from common_codes.optimizers.NRBO import a4_NRBO_fitrnet_opt
 from common_codes.optimizers.BOA import a4_BOA_fitrnet_opt
 from common_codes.optimizers.HHO_Lite import a4_HHO_Lite_fitrnet_opt
 from common_codes.ensemble.stacking import a4_ensemble_stacking
+from common_codes.ensemble.unified_evaluation import unified_outer_cv_evaluation
 
 
 
@@ -261,7 +262,7 @@ def main():
 
             config = param_config[dataset_name]
 
-            # ========== 1. 运行6个EA ==========
+            # ========== 1. 运行6个EA（用于收敛曲线和参数记录）==========
             results = {}
             for algo in ea_names:
                 results[algo] = run_algorithm(algo, X, y, max_evals=config[algo], model_config=model_config)
@@ -274,56 +275,35 @@ def main():
             max_gen = max(max_gen, 1)
             save_convergence_csv(model_name, dataset_name, convergence_dict, max_gen)
 
-            # ========== 打印单算法结果 ==========
-            print('\n' + '-' * 70)
-            print(f"{'算法':<10} {'R2':>7} {'R2CV':>7} {'RMSE':>8} {'MAE':>8} {'Time(s)':>8}")
-            print('-' * 70)
-            for algo in ea_names:
-                r = results[algo]
-                print(f"{algo:<10} {r['R2']:>7.4f} {r['R2CV']:>7.4f} {r['RMSE']:>8.3f} {r['MAE']:>8.3f} {r['Time']:>8.1f}")
-
-            # ========== 2. 集成实验 ==========
+            # ========== 2. 统一 outer-CV 评估（论文主结果）==========
             print('\n' + '=' * 60)
-            print('集成实验')
+            print('统一 outer-CV 评估（论文主结果）')
             print('=' * 60)
+            print('  Running unified outer-CV evaluation...', flush=True)
+            unified_results = unified_outer_cv_evaluation(X, y, model_config, max_evals=config['DE'])
 
-            r2cv_scores = [results[a]['R2CV'] for a in ea_names]
+            print('\n' + '-' * 80)
+            print(f"{'方法':<14} {'R2CV':>8} {'RMSE':>8} {'MAE':>8}")
+            print('-' * 80)
+            for name in ea_names + ['SimpleAvg', 'WeightedAvg', 'Stacking']:
+                r = unified_results[name]
+                print(f"{name:<14} {r['R2CV']:>8.4f} {r['RMSE']:>8.3f} {r['MAE']:>8.3f}")
+
+            # ========== 3. 全数据训练（用于CSV输出和预测可视化）==========
             models = [results[a]['model'] for a in ea_names]
-            predictions = np.array([m.predict(X) for m in models])
             pred_dict = {a: results[a]['model'].predict(X) for a in ea_names}
+            predictions = np.array([m.predict(X) for m in models])
 
-            ensemble_results = {}
-
-            # --- Full-data R2 for SimpleAvg/WeightedAvg (用于CSV输出) ---
+            r2cv_scores = [unified_results[a]['R2CV'] for a in ea_names]
             y_simple = simple_avg(predictions)
-            R2_s, RMSE_s, MAE_s = calc_metrics(y, y_simple)
             y_weighted, weights = weighted_avg(predictions, r2cv_scores)
-            R2_w, RMSE_w, MAE_w = calc_metrics(y, y_weighted)
 
-            # --- Stacking: 5折CV内正确计算所有集成方法的R2CV ---
-            print('  Running Stacking (corrected R2CV for all methods)...', flush=True)
             try:
                 Mdl_stack, A1_stack = a4_ensemble_stacking(X, y, model_config=model_config, max_evals=config['DE'])
                 y_stack = Mdl_stack.predict(X)
-                R2_st, RMSE_st, MAE_st = calc_metrics(y, y_stack)
-
-                # 使用 stacking 内部 CV 修正后的 R2CV
-                R2CV_s = A1_stack['SA_R2CV']   # 修正后的 SimpleAvg R2CV
-                R2CV_w = A1_stack['WA_R2CV']   # 修正后的 WeightedAvg R2CV
-                R2CV_st = A1_stack['R2CV']     # Stacking R2CV
-
-                ensemble_results['SimpleAvg'] = {'R2': R2_s, 'R2CV': R2CV_s, 'RMSE': RMSE_s, 'MAE': MAE_s}
-                ensemble_results['WeightedAvg'] = {'R2': R2_w, 'R2CV': R2CV_w, 'RMSE': RMSE_w, 'MAE': MAE_w}
-                ensemble_results['Stacking'] = {'R2': R2_st, 'R2CV': R2CV_st, 'RMSE': RMSE_st, 'MAE': MAE_st}
-
-                print(f"  SimpleAvg:     R2={R2_s:.4f}  R2CV={R2CV_s:.4f}  RMSE={RMSE_s:.3f}  MAE={MAE_s:.3f}")
-                print(f"  WeightedAvg:   R2={R2_w:.4f}  R2CV={R2CV_w:.4f}  RMSE={RMSE_w:.3f}  MAE={MAE_w:.3f}")
-                print(f"  Stacking:      R2={R2_st:.4f}  R2CV={R2CV_st:.4f}  RMSE={RMSE_st:.3f}  MAE={MAE_st:.3f}")
             except Exception as e:
-                print(f"  Stacking FAILED: {e}")
-                ensemble_results['SimpleAvg'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
-                ensemble_results['WeightedAvg'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
-                ensemble_results['Stacking'] = {'R2': 0, 'R2CV': 0, 'RMSE': 0, 'MAE': 0, 'error': str(e)}
+                print(f"  [WARN] Full-data stacking training failed: {e}")
+                y_stack = y_weighted
 
             # ========== 保存CSV ==========
             save_scatter_csv(model_name, dataset_name, y, pred_dict, y_weighted, 'WeightedAvg')
@@ -332,23 +312,36 @@ def main():
             save_errors_csv(model_name, dataset_name, y, pred_dict, y_weighted)
 
             # ========== 集成增益 ==========
-            best_single_r2cv = max(r2cv_scores)
-            best_single_algo = ea_names[r2cv_scores.index(best_single_r2cv)]
-            best_ensemble_r2cv = max(r['R2CV'] for r in ensemble_results.values() if r['R2CV'] != 0)
-            best_ensemble_method = max(
-                (k for k in ensemble_results if ensemble_results[k]['R2CV'] != 0),
-                key=lambda k: ensemble_results[k]['R2CV']
-            )
+            best_single_r2cv = max(unified_results[a]['R2CV'] for a in ea_names)
+            best_single_algo = max(ea_names, key=lambda a: unified_results[a]['R2CV'])
+            best_ensemble_r2cv = max(unified_results[m]['R2CV'] for m in ['SimpleAvg', 'WeightedAvg', 'Stacking'])
+            best_ensemble_method = max(['SimpleAvg', 'WeightedAvg', 'Stacking'],
+                                      key=lambda m: unified_results[m]['R2CV'])
             improvement_pp = round((best_ensemble_r2cv - best_single_r2cv) * 100, 2)
 
-            # ========== 存储单算法结果 ==========
+            # ========== 存储结果（统一 outer-CV 评估结果）==========
             single_save = {}
             for a in ea_names:
                 r = results[a]
-                single_save[a] = {'R2': r['R2'], 'R2CV': r['R2CV'],
-                                  'RMSE': r['RMSE'], 'MAE': r['MAE'], 'Time': r['Time'],
-                                  'params': {k: str(v) if not isinstance(v, (int, float, bool)) else v
-                                             for k, v in r['params'].items()}}
+                u = unified_results[a]
+                single_save[a] = {
+                    'R2': r['R2'], 'R2CV': u['R2CV'],
+                    'RMSE': u['RMSE'], 'MAE': u['MAE'], 'Time': r['Time'],
+                    'params': {k: str(v) if not isinstance(v, (int, float, bool)) else v
+                               for k, v in r['params'].items()}
+                }
+
+            ensemble_results = {
+                'SimpleAvg': {'R2CV': unified_results['SimpleAvg']['R2CV'],
+                              'RMSE': unified_results['SimpleAvg']['RMSE'],
+                              'MAE': unified_results['SimpleAvg']['MAE']},
+                'WeightedAvg': {'R2CV': unified_results['WeightedAvg']['R2CV'],
+                                'RMSE': unified_results['WeightedAvg']['RMSE'],
+                                'MAE': unified_results['WeightedAvg']['MAE']},
+                'Stacking': {'R2CV': unified_results['Stacking']['R2CV'],
+                             'RMSE': unified_results['Stacking']['RMSE'],
+                             'MAE': unified_results['Stacking']['MAE']},
+            }
 
             model_results[dataset_name] = {
                 'single_results': single_save,

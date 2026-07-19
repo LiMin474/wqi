@@ -21,13 +21,33 @@ _CNN_PT_IMPORTED = False
 def _ensure_imports():
     global _CNN_PT_IMPORTED
     if not _CNN_PT_IMPORTED:
-        global torch, nn, NeuralNetRegressor, StandardScaler, Pipeline, cross_val_score
+        global torch, nn, NeuralNetRegressor, StandardScaler, Pipeline, cross_val_score, CNN1DModel
         import torch
         import torch.nn as nn
         from skorch import NeuralNetRegressor
         from sklearn.preprocessing import StandardScaler
         from sklearn.model_selection import cross_val_score
         from sklearn.pipeline import Pipeline
+
+        class CNN1DModel(nn.Module):
+            def __init__(self, n_features, filters, kernel_size, dropout_rate):
+                super().__init__()
+                self.conv1 = nn.Conv1d(1, filters, kernel_size, padding='same')
+                self.relu = nn.ReLU()
+                self.dropout = nn.Dropout(dropout_rate)
+                self.global_pool = nn.AdaptiveAvgPool1d(1)
+                self.fc = nn.Linear(filters, 1)
+
+            def forward(self, x):
+                x = x.permute(0, 2, 1)
+                x = self.conv1(x)
+                x = self.relu(x)
+                x = self.dropout(x)
+                x = self.global_pool(x)
+                x = x.view(x.size(0), -1)
+                x = self.fc(x)
+                return x
+
         torch.manual_seed(1)
         _CNN_PT_IMPORTED = True
 
@@ -42,26 +62,6 @@ def cnn_1d_pt_decode(x):
     batch_size = [8, 16, 32, 64][min(batch_size_idx, 3)]
     dropout_rate = x[4] * 0.5
     return filters, kernel_size, lr, batch_size, dropout_rate
-
-
-class CNN1DModel(nn.Module):
-    def __init__(self, n_features, filters, kernel_size, dropout_rate):
-        super().__init__()
-        self.conv1 = nn.Conv1d(1, filters, kernel_size, padding='same')
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(dropout_rate)
-        self.global_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Linear(filters, 1)
-
-    def forward(self, x):
-        x = x.permute(0, 2, 1)
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.global_pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        return x
 
 
 def cnn_1d_pt_evaluate(params, XX, YY, cvss):
